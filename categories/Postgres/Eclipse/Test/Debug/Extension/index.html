@@ -1,305 +1,203 @@
-<!DOCTYPE HTML>
-
-    <html lang="zh-Hans">
-  
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8">
   
-  <title>Extension | David&#39;s Blog</title>
-  <meta name="author" content="David Zhang">
+
   
-  <meta name="description" content="knowledge is power">
-  
-  
+  <title>Category: Extension | David&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-
+  <meta name="description" content="knowledge is power">
+<meta property="og:type" content="website">
+<meta property="og:title" content="David&#39;s Blog">
+<meta property="og:url" content="https://idrawone.github.io/categories/Postgres/Eclipse/Test/Debug/Extension/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="knowledge is power">
+<meta property="og:locale" content="en_US">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
   
-  <meta property="og:site_name" content="David&#39;s Blog"/>
-
-  
-    <meta property="og:image" content=""/>
-  
-
-  
-    <meta http-equiv="Content-Language" content="zh-Hans"/>
-  
-
-  <link href="/img/favicon.png" rel="icon">
-  
-    <link rel="apple-touch-icon" href="/img/apple-icon.ico">
-    <link rel="apple-touch-icon-precomposed" href="/img/apple-icon.ico">
-    
-
-  <link rel="alternate" href="/atom.xml" title="David&#39;s Blog" type="application/atom+xml">
-  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
-
-  
-  <!-- Chinese readability improment -->
-  <style type="text/css">
-    article {font-weight: 400;letter-spacing: .01rem;}
-    article .entry{line-height:2;}
-  </style>
+    <link rel="alternate" href="/atom.xml" title="David&#39;s Blog" type="application/atom+xml">
   
   
-  <style type="text/css">
-  /* Tim Pietrusky advanced checkbox hack (Android <= 4.1.2) */
-body{ -webkit-animation: bugfix infinite 1s; }
-@-webkit-keyframes bugfix { from {padding:0;} to {padding:0;} }
-</style>
-
-  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
-
-  <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-48887175-1', 'auto');
-  ga('send', 'pageview');
-
-</script>
-
-
-
+    <link rel="icon" href="/favicon.png">
   
-    <!-- 360 Font and Baidu CDN in China -->
-    
-      <link href='//fonts.googleapis.com/css?family=Open+Sans:300,400|Playball' rel='stylesheet' type='text/css'>
-    
-  <link href='//apps.bdimg.com/libs/fontawesome/4.1.0/css/font-awesome.css' rel='stylesheet' type='text/css'>
-  <script src="//libs.baidu.com/jquery/1.11.1/jquery.min.js"></script>
   
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
 
-
-
-<!-- mathjax config similar to math.stackexchange -->
-
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({
-    tex2jax: {
-      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-      processEscapes: true
-    }
-  });
-</script>
-
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Config({
-      tex2jax: {
-        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-      }
-    });
-</script>
-
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Queue(function() {
-        var all = MathJax.Hub.getAllJax(), i;
-        for(i=0; i < all.length; i += 1) {
-            all[i].SourceElement().parentNode.className += ' has-jax';
-        }
-    });
-</script>
-
-<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
 <meta name="generator" content="Hexo 4.2.0"></head>
 
-
 <body>
-  <header id="header" class="inner"><div class="padding">
-	<div class="alignleft logo">
-	  <h1><a href="/">David&#39;s Blog</a></h1>
-	</div>
-	<nav id="main-nav" class="alignright">
-		<input type="checkbox" id="toggle" />
-		<label for="toggle" class="toggle" data-open="Main Menu" data-close="Close Menu" onclick><i class="fa fa-bars"></i></label>
-	  <ul class="menu">
-	    
-	      <li><a href="/">Home</a></li>
-	    
-	      <li><a href="/archives">Archives</a></li>
-	    
-	    
-	  </ul>
-	</nav>
-	<div class="clearfix"></div>
-</div>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">David&#39;s Blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://idrawone.github.io"></form>
+      </div>
+    </div>
+  </div>
 </header>
-  <div id="page-heading-wrap">
-  	<div class="inner">
-      <div class="padding">
-    		
-          <h2>knowledge is power</h2>
+      <div class="outer">
+        <section id="main">
+  
+  
+    
+    
+      
+      
+      <section class="archives-wrap">
+        <div class="archive-year-wrap">
+          <a href="/archives/2019" class="archive-year">2019</a>
+        </div>
+        <div class="archives">
+    
+    <article class="archive-article archive-type-post">
+  <div class="archive-article-inner">
+    <header class="archive-article-header">
+      <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/" class="archive-article-date">
+  <time datetime="2019-12-31T08:00:00.000Z" itemprop="datePublished">Dec 31</time>
+</a>
+      
+  
+    <h1 itemprop="name">
+      <a class="archive-article-title" href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/">How to create, debug and test an extension written in C for PostgreSQL</a>
+    </h1>
+  
+
+    </header>
+  </div>
+</article>
+  
+  
+    </div></section>
+  
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/">Kerberos</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/">GSSAPI</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/Authentication/">Authentication</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/">Ubuntu</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/">PostgreSQL</a></li></ul></li></ul></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/PostgreSQL/">PostgreSQL</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/PostgreSQL/Eclipse/">Eclipse</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/PostgreSQL/Eclipse/Debug/">Debug</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/">Postgres</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/">Eclipse</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/Test/">Test</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/Test/Debug/">Debug</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/Test/Debug/Extension/">Extension</a></li></ul></li></ul></li></ul></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">March 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/">PostgreSQL GSSAPI Authentication with Kerberos part2: PostgreSQL Configuraiton</a>
+          </li>
+        
+          <li>
+            <a href="/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">PostgreSQL GSSAPI Authentication with Kerberos part1: how to setup Kerveros on Ubuntu</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/">How to create, debug and test an extension written in C for PostgreSQL</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/">How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
         
       </div>
-  	</div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 David Zhang<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
   </div>
-  <div id="content" class="inner">
-    <div id="main-col" class="alignleft"><div id="wrapper" class="padding">
-<h2 class="archive-title category">Extension</h2>
-
-
-  <div class="archive">
-    
-      <article class="post">
-        <div class="post-content-index">
-        <header>
-          <div class="icon"></div>
-            
-              <h1 class="title transition"><a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/" target="_blank">How to create, debug and test an extension written in C for PostgreSQL</a></h1>
-            
-          <ul>
-            <li>
-              <span class="heading-span">Posted on: </span>
-              <time datetime="2019-12-31T08:00:00.000Z">2019-12-31</time>
-            </li>
-            
-              <li>
-                <span class="heading-span">By: </span>
-
-                
-                  <a href="/" target="_blank">David Zhang</a>
-
-                
-
-              </li>
-            
-            <li>
-              <span class="heading-span">With: </span>
-              
-          </ul>
-        </header>
-      </article>
-    
-  </div>
-
-
-<nav id="pagination">
-  
-  
-  <div class="clearfix"></div>
-</nav></div></div>
-    <aside id="sidebar" class="alignright"><div class="padding">
-	
-	  <div class="search">
-  <form action="//google.com/search" method="get" accept-charset="utf-8">
-    <input type="search" autocomplete="off" name="q" maxlength="20" results="0" placeholder="Search">
-    <input type="hidden" name="q" value="site:idrawone.github.io">
-  </form>
-</div>
-	
-	  
-<div class="widget category">
-  <h3 class="title">Categories</h3>
-  <ul class="entry">
-  
-    <li><a href="/categories/PostgreSQL/Eclipse/Debug/">Debug</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/Test/Debug/">Debug</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/">Eclipse</a><small>1</small></li>
-  
-    <li><a href="/categories/PostgreSQL/Eclipse/">Eclipse</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/Test/Debug/Extension/">Extension</a><small>1</small></li>
-  
-    <li><a href="/categories/PostgreSQL/">PostgreSQL</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/">Postgres</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/Test/">Test</a><small>1</small></li>
-  
-  </ul>
-</div>
-
-	
-	  
-<div class="widget recent-post">
-  <h3 class="title">Recent Posts</h3>
-  <ul class="entry">
-    
-      <li>
-        <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/">How to create, debug and test an extension written in C for PostgreSQL</a>
-      </li>
-    
-      <li>
-        <a href="/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/">How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04</a>
-      </li>
-    
-  </ul>
-</div>
-
-	
-	  
-	
-	  <iframe width="100%" height="120" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=550&fansRow=2&ptype=1&speed=0&skin=10&isTitle=1&noborder=1&isWeibo=0&isFans=0&uid=5594792135&verifier=676ff25e&dpc=1"></iframe>
-	
-	  <div class="widget category">
-	<h3 class="title">Link</h3>
-	<ul class="entry">
-		
-        	<li><a href="http://idrawone.blogspot.com/?view=flipcard" target="_blank" rel="noopener">Blogspot</a></li>
-      	
-        	<li><a href="http://idrawone.github.io/">Github</a></li>
-      	
-	</ul>
-</div>
-	
-</div></aside>
-    <div class="clearfix"></div>
-  </div>
-  <footer id="footer" class="inner"><div class="padding">
-	<div class="alignleft">
-	  
-	  Copyright&copy;2013-2020 <a href=" / ">David Zhang</a>
-	  
-	  | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
-	  and Theme by <a href="https://github.com/hijiangtao/dark-tech/" target="_blank">Dark-Tech</a> | <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000257487'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s96.cnzz.com/z_stat.php%3Fid%3D1000257487' type='text/javascript'%3E%3C/script%3E"));</script>
-	</div>
-
-	<div class="alignright">
-		
-		
-			<a href="https://github.com/idrawone" target="_blank" title="David Zhang Github"><i class="fa fa-github-square"></i></a>	
-		
-		
-		
-			<a href="http://www.weibo.com/idrawone" target="_blank" title="David Zhang Weibo"><i class="fa fa-weibo"></i></a>	
-		
-		
-		
-		
-	</div>
-
-	<div class="clearfix"></div>
-</div>
-
-<div class="scroll-top"><i class="fa fa-arrow-circle-up"></i></div>
 </footer>
+    </div>
+    <nav id="mobile-nav">
   
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 
-<script src="//cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/3.0.4/jquery.imagesloaded.js"></script>
-<script src="/js/gallery.js"></script>
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
 
 
 
-<script type="text/javascript">
-$(window).scroll(function() {
 
-    if($(this).scrollTop() > 400) {
-        $('.scroll-top').fadeIn(200);
-    } else {
-        $('.scroll-top').fadeOut(200);
-    }
-});
+<script src="/js/script.js"></script>
 
-$('.scroll-top').bind('click', function(e) {
-    e.preventDefault();
-    $('body,html').animate({scrollTop:0},200);
-});
-</script>
 
+
+
+  </div>
 </body>
 </html>

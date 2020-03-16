@@ -1,171 +1,114 @@
-<!DOCTYPE HTML>
-
-    <html lang="zh-Hans">
-  
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8">
   
+
+  
   <title>How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04 | David&#39;s Blog</title>
-  <meta name="author" content="David Zhang">
-  
-  <meta name="description" content="knowledge is power">
-  
-  
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-
-  <meta property="og:title" content="How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04"/>
-  <meta property="og:site_name" content="David&#39;s Blog"/>
-
+  <meta name="description" content="1. OverviewThis tutorial provides detailed instructions to help a newbie setup the building and debugging environment with the latest Eclipse IDE for C&#x2F;C++ Developers for current Postgres 12.1 release">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04">
+<meta property="og:url" content="https://idrawone.github.io/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewThis tutorial provides detailed instructions to help a newbie setup the building and debugging environment with the latest Eclipse IDE for C&#x2F;C++ Developers for current Postgres 12.1 release">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/eclipse-desktop-shortcut.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/import-postgres-project.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/create-build-target.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/attach-postgres.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/find-postgres-server.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/pid-attach-permission-issue.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/hit-breakpoint.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/debugger-console.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/eclipse-simple-query.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/debugger-console-bt.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/eclipse-frame-5.png">
+<meta property="article:published_time" content="2019-12-30T08:50:00.000Z">
+<meta property="article:modified_time" content="2020-01-19T20:51:24.000Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/eclipse-desktop-shortcut.png">
   
-    <meta property="og:image" content=""/>
-  
-
-  
-    <meta http-equiv="Content-Language" content="zh-Hans"/>
-  
-
-  <link href="/img/favicon.png" rel="icon">
-  
-    <link rel="apple-touch-icon" href="/img/apple-icon.ico">
-    <link rel="apple-touch-icon-precomposed" href="/img/apple-icon.ico">
-    
-
-  <link rel="alternate" href="/atom.xml" title="David&#39;s Blog" type="application/atom+xml">
-  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
-
-  
-  <!-- Chinese readability improment -->
-  <style type="text/css">
-    article {font-weight: 400;letter-spacing: .01rem;}
-    article .entry{line-height:2;}
-  </style>
+    <link rel="alternate" href="/atom.xml" title="David&#39;s Blog" type="application/atom+xml">
   
   
-  <style type="text/css">
-  /* Tim Pietrusky advanced checkbox hack (Android <= 4.1.2) */
-body{ -webkit-animation: bugfix infinite 1s; }
-@-webkit-keyframes bugfix { from {padding:0;} to {padding:0;} }
-</style>
-
-  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
-
-  <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-48887175-1', 'auto');
-  ga('send', 'pageview');
-
-</script>
-
-
-
+    <link rel="icon" href="/favicon.png">
   
-    <!-- 360 Font and Baidu CDN in China -->
-    
-      <link href='//fonts.googleapis.com/css?family=Open+Sans:300,400|Playball' rel='stylesheet' type='text/css'>
-    
-  <link href='//apps.bdimg.com/libs/fontawesome/4.1.0/css/font-awesome.css' rel='stylesheet' type='text/css'>
-  <script src="//libs.baidu.com/jquery/1.11.1/jquery.min.js"></script>
   
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
 
-
-
-<!-- mathjax config similar to math.stackexchange -->
-
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({
-    tex2jax: {
-      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-      processEscapes: true
-    }
-  });
-</script>
-
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Config({
-      tex2jax: {
-        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-      }
-    });
-</script>
-
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Queue(function() {
-        var all = MathJax.Hub.getAllJax(), i;
-        for(i=0; i < all.length; i += 1) {
-            all[i].SourceElement().parentNode.className += ' has-jax';
-        }
-    });
-</script>
-
-<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
 <meta name="generator" content="Hexo 4.2.0"></head>
 
-
 <body>
-  <header id="header" class="inner"><div class="padding">
-	<div class="alignleft logo">
-	  <h1><a href="/">David&#39;s Blog</a></h1>
-	</div>
-	<nav id="main-nav" class="alignright">
-		<input type="checkbox" id="toggle" />
-		<label for="toggle" class="toggle" data-open="Main Menu" data-close="Close Menu" onclick><i class="fa fa-bars"></i></label>
-	  <ul class="menu">
-	    
-	      <li><a href="/">Home</a></li>
-	    
-	      <li><a href="/archives">Archives</a></li>
-	    
-	    
-	  </ul>
-	</nav>
-	<div class="clearfix"></div>
-</div>
-</header>
-  <div id="page-heading-wrap">
-  	<div class="inner">
-      <div class="padding">
-    		
-          <h1>How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04</h1>
-          <ul>
-            <li>
-              <span class="heading-span">Posted on: </span>
-              <time datetime="2019-12-30T08:50:00.000Z">2019-12-30</time>
-            </li>
-            
-              <li>
-                <span class="heading-span">By: </span>
-
-                
-                  <a href="/" target="_blank">David Zhang</a>
-
-                
-
-              </li>
-            
-            <li>
-              <span class="heading-span">With: </span>
-              
-            </li>
-          </ul>
-        
-      </div>
-  	</div>
-  </div>
-  <div id="content" class="inner">
-    <div id="main-col" class="alignleft"><div id="wrapper" class="padding"><article class="post">
-  
-  
-    <div class="post-content">
-  
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">David&#39;s Blog</a>
+      </h1>
       
-      <div class="entry">
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
         
-          <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>This tutorial provides detailed instructions to help a newbie setup the building and debugging environment with the latest <code>Eclipse IDE for C/C++ Developers</code> for current <code>Postgres 12.1</code> release on <code>LTS Ubuntu 18.04</code>. Below is the key requirement.</p>
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://idrawone.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/" class="article-date">
+  <time datetime="2019-12-30T08:50:00.000Z" itemprop="datePublished">2019-12-30</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/PostgreSQL/">PostgreSQL</a>►<a class="article-category-link" href="/categories/PostgreSQL/Eclipse/">Eclipse</a>►<a class="article-category-link" href="/categories/PostgreSQL/Eclipse/Debug/">Debug</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>This tutorial provides detailed instructions to help a newbie setup the building and debugging environment with the latest <code>Eclipse IDE for C/C++ Developers</code> for current <code>Postgres 12.1</code> release on <code>LTS Ubuntu 18.04</code>. Below is the key requirement.</p>
 <ul>
 <li>Linux: ubuntu-18.04.3-desktop-amd64</li>
 <li>Postgres: REL_12_STABLE branch</li>
@@ -264,170 +207,128 @@ body{ -webkit-animation: bugfix infinite 1s; }
 <p><a href="https://www.highgo.ca/2019/10/03/trace-query-processing-internals-with-debugger" target="_blank" rel="noopener">2. Trace Query Processing Internals with Debugger</a> </p>
 <p><a href="https://wiki.postgresql.org/wiki/Working_with_Eclipse" target="_blank" rel="noopener">3. Working with Eclipse</a></p>
 
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://idrawone.github.io/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/" data-id="ck7tpyqhc0000z55d5cu63sq9" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          How to create, debug and test an extension written in C for PostgreSQL
         
       </div>
-      <footer>
-        
-          
+    </a>
   
-  <div class="categories">
-    <a href="/categories/PostgreSQL/">PostgreSQL</a>, <a href="/categories/PostgreSQL/Eclipse/">Eclipse</a>, <a href="/categories/PostgreSQL/Eclipse/Debug/">Debug</a>
-  </div>
-
-          
-          <div class="share">
   
-
-    
-      <div class="bdsharebuttonbox"><a href="#" class="bds_twi" data-cmd="twi" title="Share to Twitter"></a><a href="#" class="bds_fbook" data-cmd="fbook" title="Share to Facebook"></a><a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a><a href="#" class="bds_weixin" data-cmd="weixin" title="Share to Wechat"></a><a href="#" class="bds_mail" data-cmd="mail" title="分享到邮件分享"></a><a href="#" class="bds_copy" data-cmd="copy" title="分享到复制网址"></a><a href="#" class="bds_sqq" data-cmd="sqq" title="Share to QQ Friends"></a><a href="#" class="bds_linkedin" data-cmd="linkedin" title="Share to linkedin"></a><a href="#" class="bds_youdao" data-cmd="youdao" title="分享到有道云笔记"></a><a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a><a href="#" class="bds_renren" data-cmd="renren" title="分享到人人网"></a><a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a></div>
-	  <script>window._bd_share_config={"common":{"bdSnsKey":{},"bdText":"","bdMini":"2","bdMiniList":["mshare","bdysc","tqq","bdxc","kaixin001","tqf","tieba","douban","tsohu","bdhome","sqq","thx","qq","ibaidu","taobao","hi","baidu","sohu","t163","qy","meilishuo","mogujie","diandian","huaban","leho","share189","duitang","hx","tfh","fx","youdao","sdo","qingbiji","ifeng","people","xinhua","ff","mail","kanshou","isohu","yaolan","wealink","xg","ty","iguba","fbook","twi","deli","s51","s139","linkedin","copy","print"],"bdPic":"","bdStyle":"1","bdSize":"24"},"share":{},"image":{"viewList":["twi","fbook","tsina","weixin","mail","copy","sqq","linkedin","youdao","qzone","renren","douban"],"viewText":"Share to","viewSize":"24"}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];</script>
-    
-
-    
-
-    
-  
-</div>
-          
-
-        
-        <div class="clearfix"></div>
-      </footer>
-    </div>
-</article>
-
-
-
-<nav id="pagination" >
-    
-    <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/" class="alignleft prev" >Prev</a>
-    
-    
-    <div class="clearfix"></div>
 </nav>
 
+  
+</article>
 
-</div></div>
-    <aside id="sidebar" class="alignright"><div class="padding">
-	
-	  <div class="search">
-  <form action="//google.com/search" method="get" accept-charset="utf-8">
-    <input type="search" autocomplete="off" name="q" maxlength="20" results="0" placeholder="Search">
-    <input type="hidden" name="q" value="site:idrawone.github.io">
-  </form>
-</div>
-	
-	  
-<div class="widget category">
-  <h3 class="title">Categories</h3>
-  <ul class="entry">
+</section>
+        
+          <aside id="sidebar">
   
-    <li><a href="/categories/PostgreSQL/Eclipse/Debug/">Debug</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/Test/Debug/">Debug</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/">Eclipse</a><small>1</small></li>
-  
-    <li><a href="/categories/PostgreSQL/Eclipse/">Eclipse</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/Test/Debug/Extension/">Extension</a><small>1</small></li>
-  
-    <li><a href="/categories/PostgreSQL/">PostgreSQL</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/">Postgres</a><small>1</small></li>
-  
-    <li><a href="/categories/Postgres/Eclipse/Test/">Test</a><small>1</small></li>
-  
-  </ul>
-</div>
-
-	
-	  
-<div class="widget recent-post">
-  <h3 class="title">Recent Posts</h3>
-  <ul class="entry">
     
-      <li>
-        <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/">How to create, debug and test an extension written in C for PostgreSQL</a>
-      </li>
-    
-      <li>
-        <a href="/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/">How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04</a>
-      </li>
-    
-  </ul>
-</div>
-
-	
-	  
-	
-	  <iframe width="100%" height="120" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=550&fansRow=2&ptype=1&speed=0&skin=10&isTitle=1&noborder=1&isWeibo=0&isFans=0&uid=5594792135&verifier=676ff25e&dpc=1"></iframe>
-	
-	  <div class="widget category">
-	<h3 class="title">Link</h3>
-	<ul class="entry">
-		
-        	<li><a href="http://idrawone.blogspot.com/?view=flipcard" target="_blank" rel="noopener">Blogspot</a></li>
-      	
-        	<li><a href="http://idrawone.github.io/">Github</a></li>
-      	
-	</ul>
-</div>
-	
-</div></aside>
-    <div class="clearfix"></div>
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/">Kerberos</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/">GSSAPI</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/Authentication/">Authentication</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/">Ubuntu</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/">PostgreSQL</a></li></ul></li></ul></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/PostgreSQL/">PostgreSQL</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/PostgreSQL/Eclipse/">Eclipse</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/PostgreSQL/Eclipse/Debug/">Debug</a></li></ul></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/">Postgres</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/">Eclipse</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/Test/">Test</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/Test/Debug/">Debug</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/Postgres/Eclipse/Test/Debug/Extension/">Extension</a></li></ul></li></ul></li></ul></li></ul></li></ul>
+    </div>
   </div>
-  <footer id="footer" class="inner"><div class="padding">
-	<div class="alignleft">
-	  
-	  Copyright&copy;2013-2020 <a href=" / ">David Zhang</a>
-	  
-	  | Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
-	  and Theme by <a href="https://github.com/hijiangtao/dark-tech/" target="_blank">Dark-Tech</a> | <script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000257487'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s96.cnzz.com/z_stat.php%3Fid%3D1000257487' type='text/javascript'%3E%3C/script%3E"));</script>
-	</div>
 
-	<div class="alignright">
-		
-		
-			<a href="https://github.com/idrawone" target="_blank" title="David Zhang Github"><i class="fa fa-github-square"></i></a>	
-		
-		
-		
-			<a href="http://www.weibo.com/idrawone" target="_blank" title="David Zhang Weibo"><i class="fa fa-weibo"></i></a>	
-		
-		
-		
-		
-	</div>
 
-	<div class="clearfix"></div>
-</div>
-
-<div class="scroll-top"><i class="fa fa-arrow-circle-up"></i></div>
-</footer>
   
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">March 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/12/">December 2019</a></li></ul>
+    </div>
+  </div>
 
 
-<script src="//cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/3.0.4/jquery.imagesloaded.js"></script>
-<script src="/js/gallery.js"></script>
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/">PostgreSQL GSSAPI Authentication with Kerberos part2: PostgreSQL Configuraiton</a>
+          </li>
+        
+          <li>
+            <a href="/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">PostgreSQL GSSAPI Authentication with Kerberos part1: how to setup Kerveros on Ubuntu</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/31/How-to-create-debug-and-test-an-extension-written-in-C-for-PostgreSQL/">How to create, debug and test an extension written in C for PostgreSQL</a>
+          </li>
+        
+          <li>
+            <a href="/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/">How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 David Zhang<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+
+  
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
 
 
 
-<script type="text/javascript">
-$(window).scroll(function() {
 
-    if($(this).scrollTop() > 400) {
-        $('.scroll-top').fadeIn(200);
-    } else {
-        $('.scroll-top').fadeOut(200);
-    }
-});
+<script src="/js/script.js"></script>
 
-$('.scroll-top').bind('click', function(e) {
-    e.preventDefault();
-    $('body,html').animate({scrollTop:0},200);
-});
-</script>
 
+
+
+  </div>
 </body>
 </html>
