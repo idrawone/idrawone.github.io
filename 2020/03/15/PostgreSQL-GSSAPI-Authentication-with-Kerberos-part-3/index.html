@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewThis blog explains how to check GSSAPI authentication, encryption and user principal information when given different connection options. 2. pg_stat_gssapi viewAccording to the official Pos">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PostgreSQL GSSAPI Authentication with Kerberos part3: pg_stat_gssapi View">
+<meta property="og:url" content="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewThis blog explains how to check GSSAPI authentication, encryption and user principal information when given different connection options. 2. pg_stat_gssapi viewAccording to the official Pos">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-03-15T11:00:00.000Z">
+<meta property="article:modified_time" content="2020-03-16T03:10:15.634Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>PostgreSQL GSSAPI Authentication with Kerberos part3: pg_stat_gssapi View | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">5</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          PostgreSQL GSSAPI Authentication with Kerberos part3: pg_stat_gssapi View
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-03-15 04:00:00 / Modified: 20:10:15" itemprop="dateCreated datePublished" datetime="2020-03-15T04:00:00-07:00">2020-03-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/" itemprop="url" rel="index">
+                    <span itemprop="name">Kerberos</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/" itemprop="url" rel="index">
+                    <span itemprop="name">GSSAPI</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/Authentication/" itemprop="url" rel="index">
+                    <span itemprop="name">Authentication</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/" itemprop="url" rel="index">
+                    <span itemprop="name">Ubuntu</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>This blog explains how to check GSSAPI authentication, encryption and user principal information when given different connection options.</p>
+<h4 id="2-pg-stat-gssapi-view"><a href="#2-pg-stat-gssapi-view" class="headerlink" title="2. pg_stat_gssapi view"></a>2. pg_stat_gssapi view</h4><p>According to the official <a href="https://www.postgresql.org/docs/current/gssapi-auth.html" target="_blank" rel="noopener">PostgreSQL document</a>, “<em>GSSAPI is an industry-standard protocol for secure authentication defined in RFC 2743. PostgreSQL supports GSSAPI for use as either an encrypted, authenticated layer, or for authentication only. GSSAPI provides automatic authentication (single sign-on) for systems that support it. The authentication itself is secure. If GSSAPI encryption (see hostgssenc) or SSL encryption are used, the data sent along the database connection will be encrypted; otherwise, it will not</em>“. We will use the <code>pg_stat_gssapi</code> view to show the information about GSSAPI usage including encryption and authentication for different connections combined with  the host-based authentication configuration. The PostgreSQL server and the psql client used in below tests require the option <code>--with-gssap</code> to be enabled during build time. </p>
+<h4 id="3-Authentication-and-Encryption-status"><a href="#3-Authentication-and-Encryption-status" class="headerlink" title="3. Authentication and Encryption status"></a>3. Authentication and Encryption status</h4><ul>
+<li><strong>Scenario 1:</strong></li>
+</ul>
+<p>Both authentication and encryption are enabled when the host-based authentication is configured with <code>hostgssenc</code> and <code>gss</code> in <code>pg_hba.conf</code><br>Set below user authenticaton rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostgssenc  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
+
+<p>Initiate the user <code>postgres</code> crendential cache using <code>kinit</code>, and then connect to PostgreSQL server with user <code>postgres</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2274 | t                 | t         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>From the result, we can see this connection is encrypted and the user is authenticated with principal <code>postgres@HIGHGO.CA</code>.</p>
+<ul>
+<li><strong>Scenario 2:</strong></li>
+</ul>
+<p>The encryption will be disabled, but user authentication is still enabled when the host-based authentication is configured with <code>hostnogssenc</code> and <code>gss</code> in <code>pg_hba.conf</code><br>Set below user authenticaton rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostnogssenc  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2291 | t                 | f         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>The result tells no encryption, but user has been authenticated using principal <code>postgres@HIGHGO.CA</code></p>
+<ul>
+<li><strong>Scenario 3:</strong></li>
+</ul>
+<p>Both encryption and authentication are all enabled when the host-based authentication is configured with <code>host</code> and <code>gss</code> in <code>pg_hba.conf</code>.<br>Set below user authenticaton rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2309 | t                 | t         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>This result is the same as the first one, meaning, <code>host</code> is equivalent to <code>hostgssenc</code> when <code>gss</code> is specified.</p>
+<ul>
+<li><strong>Scenario 4:</strong></li>
+</ul>
+<p>The authentication will be disabled, but encryption is still on when the host-based authentication is configured with <code>host</code> and <code>trust</code> in <code>pg_hba.conf</code>.<br>Set below user authenticaton rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  trust</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted | principal </span><br><span class="line">------+-------------------+-----------+-----------</span><br><span class="line"> 2322 | f                 | t         | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>This result tells that the encryption will be always on when <code>--with-gssapi</code> is enabled during build time, unless <code>hostnogssenc</code> is specified in the host-based authentication file.</p>
+<ul>
+<li><strong>Scenario 5:</strong></li>
+</ul>
+<p>Both authentication and encryption will be disabled when the host-based authentication is configured with <code>host</code> and <code>trust</code> in <code>pg_hba.conf</code>, and the client <code>psql</code> requests a non-gssenc mode connection, i.e. <code>gssencmode=disable</code>.<br>Set below user authenticaton rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  trust</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -h pg.highgo.ca -U postgres -d &quot;dbname&#x3D;postgres gssencmode&#x3D;disable&quot;</span><br><span class="line">psql (12.2)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted | principal </span><br><span class="line">------+-------------------+-----------+-----------</span><br><span class="line"> 2328 | f                 | f         | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>You can also achieve the same result by setting the environment <code>PGGSSENCMODE=disable</code> from the client side. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PGGSSENCMODE&#x3D;disable psql -h pg.highgo.ca -U postgres -d postgres</span><br></pre></td></tr></table></figure>
+
+<h4 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion:"></a>Conclusion:</h4><p>Once <code>--with-gssapi</code> is enabled in PostgreSQL, the encryption will always be turnned on unless you specify <code>hostnogssenc</code> in the host-based authentication file, or manually disable gssenc mode from a client side. Knowing the above difference might help the people who is doing the security related environment setup using GSSAPI.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/" rel="prev" title="PostgreSQL GSSAPI Authentication with Kerberos part2: PostgreSQL Configuraiton">
+      <i class="fa fa-chevron-left"></i> PostgreSQL GSSAPI Authentication with Kerberos part2: PostgreSQL Configuraiton
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-pg-stat-gssapi-view"><span class="nav-number">2.</span> <span class="nav-text">2. pg_stat_gssapi view</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Authentication-and-Encryption-status"><span class="nav-number">3.</span> <span class="nav-text">3. Authentication and Encryption status</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Conclusion"><span class="nav-number">4.</span> <span class="nav-text">Conclusion:</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

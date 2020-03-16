@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/</loc>
+    
+    <lastmod>2020-03-16T03:10:15.634Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/</loc>
     
     <lastmod>2020-03-16T00:55:44.960Z</lastmod>
