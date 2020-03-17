@@ -325,7 +325,7 @@
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
           
-            <a href="/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part2: PostgreSQL Configuraiton</a>
+            <a href="/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part-2: PostgreSQL Configuraiton</a>
         </h1>
 
         <div class="post-meta">
@@ -342,7 +342,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-15 16:42:59" itemprop="dateModified" datetime="2020-03-15T16:42:59-07:00">2020-03-15</time>
+                <time title="Modified: 2020-03-16 21:46:42" itemprop="dateModified" datetime="2020-03-16T21:46:42-07:00">2020-03-16</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -391,13 +391,13 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>This blog explains all necessary configuration in PostgreSQL for user authentication using GSSAPI with Kerberos.</p>
+          <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous <a href="https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">blog</a>, we have setup Kerberos, added all required principals and verified each principal. This blog will explains all the necessary configuration, i.e. <code>postgresql.conf</code>, <code>pg_hba.conf</code> and <code>pg_ident.conf</code>, in PostgreSQL for user authentication using GSSAPI with Kerberos.</p>
 <h4 id="2-Build-PostgreSQL-with-GSSAPI"><a href="#2-Build-PostgreSQL-with-GSSAPI" class="headerlink" title="2. Build PostgreSQL with GSSAPI"></a>2. Build PostgreSQL with GSSAPI</h4><p>The official <a href="https://www.postgresql.org/download/linux/ubuntu/" target="_blank" rel="noopener">PostgreSQL release for Ubuntu</a> has GSSAPI enabled for user authentication with Kerberos, however if you want to build it from source code, you can simply enable it by giving the option <code>--with-gssapi</code> in configure process like below.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ .&#x2F;configure --with-gssapi --prefix&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgapp</span><br></pre></td></tr></table></figure>
-<p>There is another option <code>--with-krb-srvnam</code>, PostgreSQL uses the default name of the Kerberos service principal. According to Postgres official document, “<em>There’s usually no reason to change this unless you have a Windows environment, in which case it must be set to upper case POSTGRES</em>“. In this blog, we keep it as default, and no extra configuration required for it. After configuration is done, you can build, install, initialize database, change configuration and start the database service as normal. The commands used in this blog are list below.</p>
+<p>There is another option <code>--with-krb-srvnam</code>, PostgreSQL uses the default name of the Kerberos service principal. According to Postgres official document, “<em>There’s usually no reason to change this unless you have a Windows environment, in which case it must be set to upper case POSTGRES</em>“. In this blog, we keep it as default, and no extra configuration required for it. After enabled <code>--with-gssapi</code> option, you can build, install, initialize database, change configuration and start database service as normal. The commands used in this blog are list below.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">make &amp;&amp; make install</span><br><span class="line">export PATH&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgapp&#x2F;bin:$PATH</span><br><span class="line">export PGDATA&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgdata&#x2F;data </span><br><span class="line">initdb -D $PGDATA</span><br></pre></td></tr></table></figure>
 
-<h4 id="3-Keytab-file"><a href="#3-Keytab-file" class="headerlink" title="3. Keytab file"></a>3. Keytab file</h4><p>If you have followed my previous blog “part1: how to setup Kerveros on Ubuntu”, then you should already have the keytab file. Now, copy the keytab file to Service Server (Postgres Server) and put it to a folder with appropriate permissions to the user owning the Postgres process. For example, user <code>postgres</code> and folder <code>/home/postgres/pgdata/data</code> in this blog. The instance principal extraced from KDC server can be verified using ktutil on Service Server.</p>
+<h4 id="3-Keytab-file"><a href="#3-Keytab-file" class="headerlink" title="3. Keytab file"></a>3. Keytab file</h4><p>If you have followed the previous blog “part-1: how to setup Kerveros on Ubuntu”, then you should already have the keytab file. Now, copy the keytab file to Service Server (Postgres Server) and put it to a folder with appropriate permissions to the user owning the Postgres process. For example, user <code>postgres</code> and folder <code>/home/postgres/pgdata/data</code> in this blog. The instance principal extraced from KDC server can be verified using ktutil on Service Server.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ ktutil </span><br><span class="line">ktutil:  list</span><br><span class="line">slot KVNO Principal</span><br><span class="line">---- ---- ---------------------------------------------------------------------</span><br><span class="line">ktutil:  read_kt postgres.keytab </span><br><span class="line">ktutil:  list</span><br><span class="line">slot KVNO Principal</span><br><span class="line">---- ---- ---------------------------------------------------------------------</span><br><span class="line">   1    1          postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line">ktutil:</span><br></pre></td></tr></table></figure>
 
 <h4 id="4-PostgreSQL-Configuration"><a href="#4-PostgreSQL-Configuration" class="headerlink" title="4. PostgreSQL Configuration"></a>4. PostgreSQL Configuration</h4><p>Once keytab file has been set properly, we can configure the keytab file location in postgresql.conf like below.<br><code>krb_server_keyfile = &#39;/home/postgres/pgdata/data/postgres.keytab&#39;</code>.  </p>
@@ -442,7 +442,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
 
 <p><img src="/images/img/gssapi-postgres-client.png" alt="GSSAPI Client"><br>The result is almost the same as authenticate user <code>postgres</code> on PostgreSQL server, but if you look at the wireshark, you will find the PostgreSQL Server, i.e. <code>192.168.0.102</code> didn’t involved in the entire user authentication process. In other words, PostgreSQL Server only rely on the keytab file extraced from KDC server.</p>
 <p>If you want to use a different user to log into database, then you need create the user on PostgreSQL server as database user, and crete the principal for this user on KDC server. Create corresponding user authentication in <code>pg_hba.conf</code> file and restart PostgreSQL server. Then you should be able to use the new user to log in database from either Client machine or PostgreSQL server machine.</p>
-<h4 id="8-Common-errors"><a href="#8-Common-errors" class="headerlink" title="8. Common errors,"></a>8. Common errors,</h4><p>Some common errors may happen during the PostgreSQL user authentication with Kerberos. Here is a short list.</p>
+<h4 id="8-Common-errors"><a href="#8-Common-errors" class="headerlink" title="8. Common errors"></a>8. Common errors</h4><p>Some common errors may happen during the PostgreSQL user authentication with Kerberos. Here is a short list.</p>
 <ul>
 <li><p>Try to connect before the user credentials has been cached</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql: error: could not connect to server: FATAL:  no pg_hba.conf entry for host &quot;192.168.0.103&quot;, user &quot;postgres&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
@@ -452,9 +452,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
 </li>
 <li><p>Service principal is expired</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql: error: could not connect to server: could not initiate GSSAPI security context: Unspecified GSS failure.  Minor code may provide more information</span><br><span class="line">could not initiate GSSAPI security context: Ticket expired</span><br><span class="line">FATAL:  no pg_hba.conf entry for host &quot;192.168.0.103&quot;, user &quot;postgres&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
-
-
-
+<h4 id="9-Summary"><a href="#9-Summary" class="headerlink" title="9. Summary"></a>9. Summary</h4><p>In this blog, we explained how to enable GSSAPI from source code and the keytab file, discussed those three key configuraton files, i.e. “PostgreSQL Configuration”, “PostgreSQL Client Authentication” and “PostreSQL Users Mapping”, and we also demonstrated user authentication from different hosts with Kerberos. In next blog, we will discuss how to check authentication and envryption status for different connection requests.</p>
 </li>
 </ul>
 
@@ -490,7 +488,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
           
-            <a href="/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part1: how to setup Kerveros on Ubuntu</a>
+            <a href="/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerveros on Ubuntu</a>
         </h1>
 
         <div class="post-meta">
@@ -507,7 +505,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-15 17:55:44" itemprop="dateModified" datetime="2020-03-15T17:55:44-07:00">2020-03-15</time>
+                <time title="Modified: 2020-03-16 21:30:31" itemprop="dateModified" datetime="2020-03-16T21:30:31-07:00">2020-03-16</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -557,9 +555,13 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
 
       
           <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL supports many secure ways to authenticate users, and one typical way is to use GSSAPI with Kerberos. However, when I was trying to investigate one issue which is related with GSSAPI in PostgreSQL, I couldn’t find a tutorial that I can follow to setup the environment easily. After some effort spent on Kerberos environment setup, I decided to write a blog to share what I have learned.</p>
-<p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner with protocol messages designed to against spying and replay attacks. This protocol is an industry-standard protocol for secure authentication and it has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heidal</a> used by OSX.</p>
-<p>This blog will be focusing on PostgreSQL users authentication with Kerveros including the basic concepts used in Kerberos, Servers/Clients/Services/Users setup, PostgreSQL configuration and some PostgreSQL users authentication test.</p>
-<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Before dive into any detailed environment setup, some key cencepts used in Kerberos has to be explained here.</p>
+<p>Since PostgreSQL GSSAPI user authnetication does involve many backgroud knowledge, I spearate this blog into 3 parts: </p>
+<ul>
+<li>part-1 will be focusing on the basic concepts used in Kerberos, Servers/Clients/Services/Users setup, and environment verification;</li>
+<li>part-2 will discuss all related configuration files required on PostgreSQL for using GSSAPI user authentication;</li>
+<li>part-3 will exaplain how to check GSSAPI authentication, encryption and user principal information for different connection options to have a better understanding about GSSAPI on PostgreSQL.</li>
+</ul>
+<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner with protocol messages designed to against spying and replay attacks. This protocol is an industry-standard protocol for secure authentication and it has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heidal</a> used by OSX. Before dive into any detailed environment setup, some key cencepts used in Kerberos has to be explained here.</p>
 <p><strong>Realm</strong>: Realm is equivalent to a domain or a group that all the users and servers belong to. It is required during Kerberos installation. For example, <code>HIGHGO.CA</code>, will be used as the Realm in this blog (change it according to your needs).</p>
 <p><strong>Principal</strong>: any users and services are defined as a principal in Kerberos. For example, <code>david</code>, <code>postgres</code>, <code>postgres/pg.highgo.ca</code> etc.</p>
 <p><strong>Instance</strong>: Kerberos uses Instance to manage service principals and especially for administrative principals. For example, <code>root/admin</code> where <code>root</code> is the principal and <code>/admin</code> is the instance.</p>
@@ -653,6 +655,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ kinit david</span><br><span class="line">Password for david@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: david@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 18:21:41  2020-03-13 04:21:41  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 18:21:38</span><br></pre></td></tr></table></figure>
 <p>If the principals verification are all success on both Service Server and Client, then we can start to configure PostgreSQL and prepare GSSAPI user authentication with Kerberos.</p>
+<h4 id="4-Summmary"><a href="#4-Summmary" class="headerlink" title="4. Summmary"></a>4. Summmary</h4><p>In this blog, we explained the basic concepts used in Kerberos, performed a step by step setup on Ubuntu, added all the required principals to KDC, and also verified each principal which will be used in next two parts.</p>
 <p><em><strong>Reference:</strong></em></p>
 <ol>
 <li><a href="https://help.ubuntu.com/lts/serverguide/kerberos.html" target="_blank" rel="noopener">Kerberos on ubuntu</a></li>
