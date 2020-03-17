@@ -48,7 +48,7 @@
 
   <meta name="description" content="1. OverviewPostgreSQL supports many secure ways to authenticate users, and one typical way is to use GSSAPI with Kerberos. However, when I was trying to investigate one issue which is related with GSS">
 <meta property="og:type" content="article">
-<meta property="og:title" content="PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerveros on Ubuntu">
+<meta property="og:title" content="PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerberos on Ubuntu">
 <meta property="og:url" content="https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/index.html">
 <meta property="og:site_name" content="David&#39;s Blog">
 <meta property="og:description" content="1. OverviewPostgreSQL supports many secure ways to authenticate users, and one typical way is to use GSSAPI with Kerberos. However, when I was trying to investigate one issue which is related with GSS">
@@ -59,7 +59,7 @@
 <meta property="og:image" content="https://idrawone.github.io/images/img/gssapi-admin-server.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/gssapi-kerberos-ok.png">
 <meta property="article:published_time" content="2020-03-11T13:00:00.000Z">
-<meta property="article:modified_time" content="2020-03-17T04:30:31.017Z">
+<meta property="article:modified_time" content="2020-03-17T05:15:35.235Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/gssapi-diagram.png">
@@ -76,7 +76,7 @@
   };
 </script>
 
-  <title>PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerveros on Ubuntu | David's Blog</title>
+  <title>PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerberos on Ubuntu | David's Blog</title>
   
 
 
@@ -195,7 +195,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerveros on Ubuntu
+          PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerberos on Ubuntu
         </h1>
 
         <div class="post-meta">
@@ -212,7 +212,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-16 21:30:31" itemprop="dateModified" datetime="2020-03-16T21:30:31-07:00">2020-03-16</time>
+                <time title="Modified: 2020-03-16 22:15:35" itemprop="dateModified" datetime="2020-03-16T22:15:35-07:00">2020-03-16</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -262,13 +262,13 @@
 
       
         <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL supports many secure ways to authenticate users, and one typical way is to use GSSAPI with Kerberos. However, when I was trying to investigate one issue which is related with GSSAPI in PostgreSQL, I couldn’t find a tutorial that I can follow to setup the environment easily. After some effort spent on Kerberos environment setup, I decided to write a blog to share what I have learned.</p>
-<p>Since PostgreSQL GSSAPI user authnetication does involve many backgroud knowledge, I spearate this blog into 3 parts: </p>
+<p>Since PostgreSQL GSSAPI user authentication does involve many background knowledges, I separate this blog into 3 parts: </p>
 <ul>
 <li>part-1 will be focusing on the basic concepts used in Kerberos, Servers/Clients/Services/Users setup, and environment verification;</li>
 <li>part-2 will discuss all related configuration files required on PostgreSQL for using GSSAPI user authentication;</li>
-<li>part-3 will exaplain how to check GSSAPI authentication, encryption and user principal information for different connection options to have a better understanding about GSSAPI on PostgreSQL.</li>
+<li>part-3 will explain how to check GSSAPI authentication, encryption and user principal information for different connection options to have a better understanding about GSSAPI on PostgreSQL.</li>
 </ul>
-<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner with protocol messages designed to against spying and replay attacks. This protocol is an industry-standard protocol for secure authentication and it has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heidal</a> used by OSX. Before dive into any detailed environment setup, some key cencepts used in Kerberos has to be explained here.</p>
+<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner with protocol messages designed to against spying and replay attacks. This protocol is an industry-standard protocol for secure authentication and it has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heidal</a> used by OSX. Before dive into any detailed environment setup, some key concepts used in Kerberos has to be explained here.</p>
 <p><strong>Realm</strong>: Realm is equivalent to a domain or a group that all the users and servers belong to. It is required during Kerberos installation. For example, <code>HIGHGO.CA</code>, will be used as the Realm in this blog (change it according to your needs).</p>
 <p><strong>Principal</strong>: any users and services are defined as a principal in Kerberos. For example, <code>david</code>, <code>postgres</code>, <code>postgres/pg.highgo.ca</code> etc.</p>
 <p><strong>Instance</strong>: Kerberos uses Instance to manage service principals and especially for administrative principals. For example, <code>root/admin</code> where <code>root</code> is the principal and <code>/admin</code> is the instance.</p>
@@ -281,7 +281,7 @@
 <p><strong>TGT</strong>: <strong>T</strong>icket <strong>G</strong>ranting <strong>T</strong>icket is a message used to confirm the identity of the principals and to deliver session keys which is used for future secured communication among user, TGS, and SS.</p>
 <p><strong>Keytab</strong>: a file extracted from the KDC principal database and contains the encryption key for a service or host. For example, <code>postgres.keytab</code> is the keytab file and will be used on PostgreSQL server, i.e. <code>hg.highgo.ca</code>.</p>
 <p><strong>Client</strong>: a workstation needs to access a Service Server. For example, <code>psql</code> running on a Client machine and want to connect to PostgreSQL server.</p>
-<h4 id="3-Kerberos-environment-setup"><a href="#3-Kerberos-environment-setup" class="headerlink" title="3. Kerberos environment setup"></a>3. Kerberos environment setup</h4><p><img src="/images/img/gssapi-diagram.png" alt="GSSAPI Diagram"><br>The above diagram shows the overall processes when PostgreSQL authenticates a user with Kerberos. First, a Client initiates the authentiation process, AS sends Client a temporary session key (gray key) encrypted with Client’s key (blue key); then Client using the temporary session key to request services, TGS grants the services and sends two copies of the communication session keys (yellow key): one encrypted using temporary key and the other copy envrypted using Service Server’s key (green key); last, Client forward the communication key to Service Server(PG) to confirm the communication. If user authentication pass then both Client and Service Server will use the communication session key for the rest of the communication. The realm, hostnames, and IP addresses used in this diagram are list below.</p>
+<h4 id="3-Kerberos-environment-setup"><a href="#3-Kerberos-environment-setup" class="headerlink" title="3. Kerberos environment setup"></a>3. Kerberos environment setup</h4><p><img src="/images/img/gssapi-diagram.png" alt="GSSAPI Diagram"><br>The above diagram shows the overall processes when PostgreSQL authenticates a user with Kerberos. First, a Client initiates the authentication process, AS sends Client a temporary session key (gray key) encrypted with Client’s key (blue key); then Client using the temporary session key to request services, TGS grants the services and sends two copies of the communication session keys (yellow key): one encrypted using temporary key and the other copy encrypted using Service Server’s key (green key); last, Client forward the communication key to Service Server(PG) to confirm the communication. If user authentication succeeded then both Client and Service Server will use the communication session key for the rest of the communication. The realm, hostnames, and IP addresses used in this diagram are list below.</p>
 <ul>
 <li>Realm: HIGHGO.CA</li>
 <li>KDC (AS+TGS): kdc.highgo.ca (192.168.0.101)</li>
@@ -304,7 +304,7 @@
 <p>Now, let’s run the <code>krb5_newrealm</code> with sudo to set up the master key for KDC database.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sudo krb5_newrealm</span><br><span class="line">Enter KDC database master key: </span><br><span class="line">Re-enter KDC database master key to verify:</span><br></pre></td></tr></table></figure>
 
-<h5 id="3-3-Kerberos-tools"><a href="#3-3-Kerberos-tools" class="headerlink" title="3.3. Kerberos tools"></a>3.3. Kerberos tools</h5><p>In the following sesstions, we need to use some tools provied by Kerberos. Here is a short list.</p>
+<h5 id="3-3-Kerberos-tools"><a href="#3-3-Kerberos-tools" class="headerlink" title="3.3. Kerberos tools"></a>3.3. Kerberos tools</h5><p>In the following sessions, we need to use some tools provided by Kerberos. Here is a short list.</p>
 <ul>
 <li>kadmin.local: KDC database administration tool used manage principal and policy.</li>
 <li>kinit: used to obtain and cache Kerberos ticket-granting ticket.</li>
@@ -323,7 +323,7 @@
 <p>Now, finally it is time to restart Kerberos service.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo systemctl restart krb5-admin-server.service</span><br></pre></td></tr></table></figure>
 
-<p>Once Kerberos service is running again, we can perform a quick test. First, try <code>klist</code> to see if any credentials cache exist, then try to see if <code>root/admin</code> can be  authenticated. If no error, then try to use <code>klist</code> again to list the principal cached. </p>
+<p>Once Kerberos service is running again, we can perform a quick test. First, try <code>klist</code> to see if any credentials cache exists, then try to see if <code>root/admin</code> can be authenticated. If no error, then try to use <code>klist</code> again to list the principal cached. </p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1000)</span><br></pre></td></tr></table></figure>
 <p>The “No credentials cache found” tells us there is no principal has been authenticated yet. Let’s run <code>kinit root/admin</code> to see if we can get it authenticated.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kinit root&#x2F;admin</span><br><span class="line">Password for root&#x2F;admin@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
@@ -336,13 +336,13 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[realms]</span><br><span class="line">	HIGHGO.CA &#x3D; &#123;</span><br><span class="line">		kdc &#x3D; kdc.highgo.ca</span><br><span class="line">		admin_server &#x3D; kdc.highgo.ca</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
 <p>Now, back to KDC Server side to add principals for Service Server and Client.</p>
 <h5 id="3-6-Add-principals-for-Service-Server"><a href="#3-6-Add-principals-for-Service-Server" class="headerlink" title="3.6. Add principals for Service Server"></a>3.6. Add principals for Service Server</h5><ul>
-<li><p>Add a princial <code>postgres</code> which is the database user and the Linux login user.</p>
+<li><p>Add a principal <code>postgres</code> which is the database user and the Linux login user.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ sudo kadmin.local</span><br><span class="line">kadmin.local:  addprinc postgres</span><br><span class="line">WARNING: no policy specified for postgres@HIGHGO.CA; defaulting to no policy</span><br><span class="line">Enter password for principal &quot;postgres@HIGHGO.CA&quot;: </span><br><span class="line">Re-enter password for principal &quot;postgres@HIGHGO.CA&quot;: </span><br><span class="line">Principal &quot;postgres@HIGHGO.CA&quot; created.</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>Add a principal <code>postgres/pg.highgo.ca</code> as a principle instance for Service server</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">kadmin.local:  addprinc postgres&#x2F;pg.highgo.ca</span><br><span class="line">WARNING: no policy specified for postgres&#x2F;pg.highgo.ca@HIGHGO.CA; defaulting to no policy</span><br><span class="line">Enter password for principal &quot;postgres&#x2F;pg.highgo.ca@HIGHGO.CA&quot;: </span><br><span class="line">Re-enter password for principal &quot;postgres&#x2F;pg.highgo.ca@HIGHGO.CA&quot;: </span><br><span class="line">Principal &quot;postgres&#x2F;pg.highgo.ca@HIGHGO.CA&quot; created.</span><br></pre></td></tr></table></figure>
 </li>
-<li><p>Extract the service principal from KDC principal database to a keytab file, which will be used to configure PostgreSQL Server. The file should saved to current folder when run below commands.</p>
+<li><p>Extract the service principal from KDC principal database to a keytab file, which will be used to configure PostgreSQL Server. The file should be saved to current folder when run below commands.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ ktutil </span><br><span class="line">ktutil:  add_entry -password -p postgres&#x2F;pg.highgo.ca@HIGHGO.CA -k 1 -e aes256-cts-hmac-sha1-96</span><br><span class="line">Password for postgres&#x2F;pg.highgo.ca@HIGHGO.CA: </span><br><span class="line">ktutil:  wkt postgres.keytab</span><br><span class="line">ktutil:  exit</span><br></pre></td></tr></table></figure>
 
 </li>
@@ -362,7 +362,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ kinit david</span><br><span class="line">Password for david@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: david@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 18:21:41  2020-03-13 04:21:41  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 18:21:38</span><br></pre></td></tr></table></figure>
 <p>If the principals verification are all success on both Service Server and Client, then we can start to configure PostgreSQL and prepare GSSAPI user authentication with Kerberos.</p>
-<h4 id="4-Summmary"><a href="#4-Summmary" class="headerlink" title="4. Summmary"></a>4. Summmary</h4><p>In this blog, we explained the basic concepts used in Kerberos, performed a step by step setup on Ubuntu, added all the required principals to KDC, and also verified each principal which will be used in next two parts.</p>
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we explained the basic concepts used in Kerberos, performed a step by step setup on Ubuntu, added all the required principals to KDC, and also verified each principal which will be used in next two parts.</p>
 <p><em><strong>Reference:</strong></em></p>
 <ol>
 <li><a href="https://help.ubuntu.com/lts/serverguide/kerberos.html" target="_blank" rel="noopener">Kerberos on ubuntu</a></li>
@@ -450,7 +450,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Basic-Concepts-for-Kerberos"><span class="nav-number">2.</span> <span class="nav-text">2. Basic Concepts for Kerberos</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Kerberos-environment-setup"><span class="nav-number">3.</span> <span class="nav-text">3. Kerberos environment setup</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#3-1-Hostname-and-IP-addresses"><span class="nav-number">3.1.</span> <span class="nav-text">3.1. Hostname and IP addresses</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-2-KDC-server-installation"><span class="nav-number">3.2.</span> <span class="nav-text">3.2. KDC server installation</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-3-Kerberos-tools"><span class="nav-number">3.3.</span> <span class="nav-text">3.3. Kerberos tools</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-4-Admin-Principal-setup"><span class="nav-number">3.4.</span> <span class="nav-text">3.4. Admin Principal setup</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-5-Service-Server-and-Client-installation"><span class="nav-number">3.5.</span> <span class="nav-text">3.5. Service Server and Client installation</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-6-Add-principals-for-Service-Server"><span class="nav-number">3.6.</span> <span class="nav-text">3.6. Add principals for Service Server</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-7-Add-principals-for-Client"><span class="nav-number">3.7.</span> <span class="nav-text">3.7. Add principals for Client</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-8-Verify-principal-on-Service-Server"><span class="nav-number">3.8.</span> <span class="nav-text">3.8. Verify principal on Service Server</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-9-Verify-principal-on-Service-Server"><span class="nav-number">3.9.</span> <span class="nav-text">3.9. Verify principal on Service Server</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Summmary"><span class="nav-number">4.</span> <span class="nav-text">4. Summmary</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Basic-Concepts-for-Kerberos"><span class="nav-number">2.</span> <span class="nav-text">2. Basic Concepts for Kerberos</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Kerberos-environment-setup"><span class="nav-number">3.</span> <span class="nav-text">3. Kerberos environment setup</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#3-1-Hostname-and-IP-addresses"><span class="nav-number">3.1.</span> <span class="nav-text">3.1. Hostname and IP addresses</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-2-KDC-server-installation"><span class="nav-number">3.2.</span> <span class="nav-text">3.2. KDC server installation</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-3-Kerberos-tools"><span class="nav-number">3.3.</span> <span class="nav-text">3.3. Kerberos tools</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-4-Admin-Principal-setup"><span class="nav-number">3.4.</span> <span class="nav-text">3.4. Admin Principal setup</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-5-Service-Server-and-Client-installation"><span class="nav-number">3.5.</span> <span class="nav-text">3.5. Service Server and Client installation</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-6-Add-principals-for-Service-Server"><span class="nav-number">3.6.</span> <span class="nav-text">3.6. Add principals for Service Server</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-7-Add-principals-for-Client"><span class="nav-number">3.7.</span> <span class="nav-text">3.7. Add principals for Client</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-8-Verify-principal-on-Service-Server"><span class="nav-number">3.8.</span> <span class="nav-text">3.8. Verify principal on Service Server</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-9-Verify-principal-on-Service-Server"><span class="nav-number">3.9.</span> <span class="nav-text">3.9. Verify principal on Service Server</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Summary"><span class="nav-number">4.</span> <span class="nav-text">4. Summary</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
