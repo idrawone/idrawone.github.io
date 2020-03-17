@@ -59,7 +59,7 @@
 <meta property="og:image" content="https://idrawone.github.io/images/img/gssapi-admin-server.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/gssapi-kerberos-ok.png">
 <meta property="article:published_time" content="2020-03-11T13:00:00.000Z">
-<meta property="article:modified_time" content="2020-03-17T18:34:43.245Z">
+<meta property="article:modified_time" content="2020-03-17T18:38:56.412Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/gssapi-diagram.png">
@@ -212,7 +212,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-17 11:34:43" itemprop="dateModified" datetime="2020-03-17T11:34:43-07:00">2020-03-17</time>
+                <time title="Modified: 2020-03-17 11:38:56" itemprop="dateModified" datetime="2020-03-17T11:38:56-07:00">2020-03-17</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -268,7 +268,7 @@
 <li>part-2 will discuss all related configuration files required on PostgreSQL for using GSSAPI user authentication;</li>
 <li>part-3 will explain how to check GSSAPI authentication, encryption and user principal information for different connection options to have a better understanding about GSSAPI on PostgreSQL.</li>
 </ul>
-<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner. This protocol is an industry-standard protocol for secure authentication with the messages designed to against spying and replay attacks. It has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heidal</a> used by OSX. Before dive into any detailed environment setup, some key concepts used in Kerberos need to be explained here.</p>
+<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner. This protocol is an industry-standard protocol for secure authentication with the messages designed to against spying and replay attacks. It has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heimdal</a> used by OSX. Before dive into any detailed environment setup, some key concepts used in Kerberos need to be explained here.</p>
 <p><strong>Realm</strong>: Realm is equivalent to a domain or a group that all the users and servers belong to. It is required during Kerberos installation. For example, <code>HIGHGO.CA</code>, will be used as the Realm in this blog (change it according to your needs).</p>
 <p><strong>Principal</strong>: any users and services are defined as a principal in Kerberos. For example, <code>david</code>, <code>postgres</code>, <code>postgres/pg.highgo.ca</code> etc.</p>
 <p><strong>Instance</strong>: Kerberos uses Instance to manage service principals and especially for administrative principals. For example, <code>root/admin</code> where <code>root</code> is the principal and <code>/admin</code> is the instance.</p>
