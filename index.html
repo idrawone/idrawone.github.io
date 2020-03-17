@@ -511,7 +511,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-17 11:41:58" itemprop="dateModified" datetime="2020-03-17T11:41:58-07:00">2020-03-17</time>
+                <time title="Modified: 2020-03-17 11:48:44" itemprop="dateModified" datetime="2020-03-17T11:48:44-07:00">2020-03-17</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -620,7 +620,7 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
 <p>Now, let’s run the <code>krb5_newrealm</code> with sudo to set up the master key for KDC database.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sudo krb5_newrealm</span><br><span class="line">Enter KDC database master key: </span><br><span class="line">Re-enter KDC database master key to verify:</span><br></pre></td></tr></table></figure>
 
-<p>Before start the Kerberos configuration, here are some kerberos tools need to know.</p>
+<p>Before start the Kerberos configuration, here are some basic kerberos tools need to know.</p>
 <ul>
 <li>kadmin.local: KDC database administration tool used manage principal and policy.</li>
 <li>kinit: used to obtain and cache Kerberos ticket-granting ticket.</li>
@@ -669,15 +669,16 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
 
 </li>
 </ul>
-<h5 id="3-7-Verify-principal-on-Service-Server"><a href="#3-7-Verify-principal-on-Service-Server" class="headerlink" title="3.7. Verify principal on Service Server"></a>3.7. Verify principal on Service Server</h5><p>After the above principals have been created from KDC Server, let’s back to Service Server to verify the principals using klist and kinit.</p>
+<h5 id="3-7-Verify-principal-on-Service-Server"><a href="#3-7-Verify-principal-on-Service-Server" class="headerlink" title="3.7. Verify principal on Service Server"></a>3.7. Verify principal on Service Server</h5><p>After the above principals have been created from KDC Server, let’s back to Service Server to verify the principal using klist and kinit.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1001)</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ kinit postgres&#x2F;pg.highgo.ca</span><br><span class="line">Password for postgres&#x2F;pg.highgo.ca@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1001</span><br><span class="line">Default principal: postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 18:25:23  2020-03-13 04:25:23  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 18:25:20</span><br></pre></td></tr></table></figure>
 
-<h5 id="3-8-Verify-principal-on-Client"><a href="#3-8-Verify-principal-on-Client" class="headerlink" title="3.8. Verify principal on Client"></a>3.8. Verify principal on Client</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1000)</span><br></pre></td></tr></table></figure>
+<h5 id="3-8-Verify-principal-on-Client"><a href="#3-8-Verify-principal-on-Client" class="headerlink" title="3.8. Verify principal on Client"></a>3.8. Verify principal on Client</h5><p>Now, back to Client machine to verify the principal using klist and kinit.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1000)</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ kinit david</span><br><span class="line">Password for david@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: david@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 18:21:41  2020-03-13 04:21:41  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 18:21:38</span><br></pre></td></tr></table></figure>
-<p>If the principals verification are all success on both Service Server and Client, then we can start to configure PostgreSQL and prepare GSSAPI user authentication with Kerberos.</p>
+<p>If the principals verification are all success on both Service Server and Client machines, then we are ready to configure PostgreSQL and prepare GSSAPI user authentication with Kerberos.</p>
 <h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we explained the basic concepts used in Kerberos, performed a step by step setup on Ubuntu, added all the required principals to KDC, and also verified each principal which will be used in next two blogs.</p>
 <p><em><strong>Reference:</strong></em></p>
 <ol>
