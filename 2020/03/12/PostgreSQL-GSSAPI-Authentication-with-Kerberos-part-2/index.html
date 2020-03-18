@@ -46,20 +46,21 @@
   };
 </script>
 
-  <meta name="description" content="1. OverviewIn previous blog, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. postgresql.conf, pg_hba.con">
+  <meta name="description" content="1. OverviewIn previous blog, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. postgresql.conf, pg_hba.co">
 <meta property="og:type" content="article">
 <meta property="og:title" content="PostgreSQL GSSAPI Authentication with Kerberos part-2: PostgreSQL Configuration">
 <meta property="og:url" content="https://idrawone.github.io/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/index.html">
 <meta property="og:site_name" content="David&#39;s Blog">
-<meta property="og:description" content="1. OverviewIn previous blog, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. postgresql.conf, pg_hba.con">
+<meta property="og:description" content="1. OverviewIn previous blog, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. postgresql.conf, pg_hba.co">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-part2.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/gssapi-postgres.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/gssapi-postgres-client.png">
 <meta property="article:published_time" content="2020-03-12T11:00:00.000Z">
-<meta property="article:modified_time" content="2020-03-18T19:17:04.883Z">
+<meta property="article:modified_time" content="2020-03-18T20:24:32.339Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://idrawone.github.io/images/img/gssapi-postgres.png">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-part2.png">
 
 <link rel="canonical" href="https://idrawone.github.io/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/">
 
@@ -209,7 +210,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-18 12:17:04" itemprop="dateModified" datetime="2020-03-18T12:17:04-07:00">2020-03-18</time>
+                <time title="Modified: 2020-03-18 13:24:32" itemprop="dateModified" datetime="2020-03-18T13:24:32-07:00">2020-03-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -258,7 +259,8 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous <a href="https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">blog</a>, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. <code>postgresql.conf</code>, <code>pg_hba.conf</code> and <code>pg_ident.conf</code>, in PostgreSQL for user authentication using GSSAPI with Kerberos.</p>
+        <p><img src="/images/img/fi-part2.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous <a href="https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">blog</a>, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. <code>postgresql.conf</code>, <code>pg_hba.conf</code> and <code>pg_ident.conf</code>, in PostgreSQL for user authentication using GSSAPI with Kerberos.</p>
 <h4 id="2-Build-PostgreSQL-with-GSSAPI"><a href="#2-Build-PostgreSQL-with-GSSAPI" class="headerlink" title="2. Build PostgreSQL with GSSAPI"></a>2. Build PostgreSQL with GSSAPI</h4><p>The official <a href="https://www.postgresql.org/download/linux/ubuntu/" target="_blank" rel="noopener">PostgreSQL release for Ubuntu</a> has GSSAPI enabled for user authentication with Kerberos, however if you want to build it from source code, you can simply enable it by giving the option <code>--with-gssapi</code> in configure process like below.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ .&#x2F;configure --with-gssapi --prefix&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgapp</span><br></pre></td></tr></table></figure>
 <p>There is another option <code>--with-krb-srvnam</code>, PostgreSQL uses the default name of the Kerberos service principal. According to Postgres official document, “<em>There’s usually no reason to change this unless you have a Windows environment, in which case it must be set to upper case POSTGRES</em>“. In this blog, we keep it as default, and no extra configuration required for it. After enabled <code>--with-gssapi</code> option, you can build, install, initialize database, change configuration and start database service as normal. The commands used in this blog are list below.</p>

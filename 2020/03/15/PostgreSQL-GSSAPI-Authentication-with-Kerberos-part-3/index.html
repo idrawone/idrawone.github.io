@@ -46,17 +46,19 @@
   };
 </script>
 
-  <meta name="description" content="1. OverviewIn previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authentic">
+  <meta name="description" content="1. OverviewIn previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authenti">
 <meta property="og:type" content="article">
 <meta property="og:title" content="PostgreSQL GSSAPI Authentication with Kerberos part-3: the status of authentication, encryption and user principal">
 <meta property="og:url" content="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/index.html">
 <meta property="og:site_name" content="David&#39;s Blog">
-<meta property="og:description" content="1. OverviewIn previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authentic">
+<meta property="og:description" content="1. OverviewIn previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authenti">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-part3.png">
 <meta property="article:published_time" content="2020-03-15T11:00:00.000Z">
-<meta property="article:modified_time" content="2020-03-18T19:38:23.779Z">
+<meta property="article:modified_time" content="2020-03-18T20:24:16.951Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-part3.png">
 
 <link rel="canonical" href="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/">
 
@@ -206,7 +208,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-18 12:38:23" itemprop="dateModified" datetime="2020-03-18T12:38:23-07:00">2020-03-18</time>
+                <time title="Modified: 2020-03-18 13:24:16" itemprop="dateModified" datetime="2020-03-18T13:24:16-07:00">2020-03-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -255,7 +257,8 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authentication, encryption and user principal information when given different connection options.</p>
+        <p><img src="/images/img/fi-part3.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authentication, encryption and user principal information when given different connection options.</p>
 <h4 id="2-pg-stat-gssapi-view"><a href="#2-pg-stat-gssapi-view" class="headerlink" title="2. pg_stat_gssapi view"></a>2. pg_stat_gssapi view</h4><p>According to the official <a href="https://www.postgresql.org/docs/current/gssapi-auth.html" target="_blank" rel="noopener">PostgreSQL document</a>, “<em>PostgreSQL supports GSSAPI for use as either an encrypted, authenticated layer, or for authentication only.</em>“ To check the authentication, encryption and user principal, we need to use <code>pg_stat_gssapi</code> view, which is a dynamic statistics views containing one row per backend and showing the information about GSSAPI authentication and encryption used on this connection.</p>
 <p>Before start the test below, make sure the <code>PostgreSQL server</code> and the <code>psql client</code> has the option <code>--with-gssap</code> enabled during build time.</p>
 <h4 id="3-Authentication-and-Encryption-status"><a href="#3-Authentication-and-Encryption-status" class="headerlink" title="3. Authentication and Encryption status"></a>3. Authentication and Encryption status</h4><ul>
