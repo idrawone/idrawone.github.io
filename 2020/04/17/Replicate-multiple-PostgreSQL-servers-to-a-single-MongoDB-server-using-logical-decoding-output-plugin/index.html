@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. Overview“Postgres, is a free and open-source relational database management system (RDBMS) emphasizing extensibility and SQL compliance.” This is the highlight of PostgreSQL in a sentence from Wik">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin">
+<meta property="og:url" content="https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. Overview“Postgres, is a free and open-source relational database management system (RDBMS) emphasizing extensibility and SQL compliance.” This is the highlight of PostgreSQL in a sentence from Wik">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/w2m-docker-fi.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/w2m-flow-chart.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/w2m-sequence-chart.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/w2m-docker-diagram.png">
+<meta property="article:published_time" content="2020-04-17T11:00:00.000Z">
+<meta property="article:modified_time" content="2020-04-17T20:31:44.694Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/w2m-docker-fi.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">6</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-04-17 04:00:00 / Modified: 13:31:44" itemprop="dateCreated datePublished" datetime="2020-04-17T04:00:00-07:00">2020-04-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/" itemprop="url" rel="index">
+                    <span itemprop="name">Replication</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/" itemprop="url" rel="index">
+                    <span itemprop="name">Logical</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/" itemprop="url" rel="index">
+                    <span itemprop="name">Decoding</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/" itemprop="url" rel="index">
+                    <span itemprop="name">Plugin</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/" itemprop="url" rel="index">
+                    <span itemprop="name">MongoDB</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/Docker/" itemprop="url" rel="index">
+                    <span itemprop="name">Docker</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/Docker/Compose/" itemprop="url" rel="index">
+                    <span itemprop="name">Compose</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/w2m-docker-fi.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>“Postgres, is a free and open-source relational database management system (RDBMS) emphasizing extensibility and SQL compliance.” This is the highlight of PostgreSQL in a sentence from Wikipedia. Yes, the extensibility of PostgreSQL is extremely useful when you have some special requirements. This blog will discuss how to use logical decoding output plugin to replicate multiple PostgreSQL servers to a single MongoDB server and the environment setup using docker compose for a quick Proof of Concept.</p>
+<h4 id="2-Logical-decoding-output-plugin"><a href="#2-Logical-decoding-output-plugin" class="headerlink" title="2. Logical decoding output plugin"></a>2. Logical decoding output plugin</h4><p>Start from version 9.5, PostgreSQL provides a solution to allow users to write their own decoding logic to reformat the output before sending it to the subscriber through a wal sender. This feature is called logical decoding output plugin. With this feature, other applications can get a specific data format from PostgreSQL database easily, and then use their own existing tools or algorithms to continue the data analysis. For example, replicating multiple Postgres servers to a single MongoDB server and then perform the real-time analytics and data visualization in MongoDB. There are many different decoding plugins available at <a href="https://wiki.postgresql.org/wiki/Logical_Decoding_Plugins" target="_blank" rel="noopener">here</a>, however <a href="https://github.com/HighgoSoftware/wal2mongo" target="_blank" rel="noopener"><code>wal2mongo</code></a> is only one can generate a JavaScript format data that can be used by MongoDB directly. You can use it following this blog to practice how data replication can be done from multiple Postgres databases to a MongoDB database using logical decoding output plugin.</p>
+<ul>
+<li>Logical decoding output plugin framework</li>
+</ul>
+<p>The logical decoding output plugin framework has a few predefined callback <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html" target="_blank" rel="noopener">interfaces</a>. These callbacks are registered in an initialization function named <code>_PG_output_plugin_init</code>, which will be called when the plugin is loaded as a shared library. After hookup with these interfaces by referring to the example <a href="https://www.postgresql.org/docs/current/test-decoding.html" target="_blank" rel="noopener">test_decoding</a>, the output decoding plugin will get notified about the changes that is happening via various callback interfaces. In these callback interfaces, the one will get noticed each time when an insert, update or delete happens is <code>LogicalDecodeChangeCB</code>. Most of the output formatting related logic should be done in a function which is registered to this interface, such as, map a Postgres data type to a MongoDB native data type.<br>Before writing your own logical decoding plugin, two basic things need to be mentioned here: one is the change callback interface is triggered based on each row, i.e. if you have multiple rows changed in one transaction, then you will get multiple times call back; the other is that this decoding framework will only be called for those transactions or commit which have already safely been saved to WAL files. Transaction that was rolled back will never get decoded.</p>
+<ul>
+<li>wal2mongo decoding plugin</li>
+</ul>
+<p><code>wal2mongo</code> is a logical decoding plugin, it mainly converts the DML operation such as insert, update and delete into a JavaScript format which later can be imported into MongoDB by using <code>mongo</code> client.</p>
+<ul>
+<li>Logical decoding data changes flow<br><img src="/images/img/w2m-flow-chart.png" alt="flow chart image"><br>The diagram above shows the data changes flow. We can use <code>psql</code> client to simulate the Application and perform database operation such as create table, insert records, update records and then delete records. The Postgres server backend will save the database changes to WAL first and then notify the WAL sender. The WAL sender will read the changes from WAL and get the output decoded by <code>wal2mongo</code> and then send the changes to the connected subscriber, i.e <code>pg_recvlogical</code> in this blog. <code>pg_recvlogical</code> will save the output as a JavaScript file, then later it will be imported to MongoDB using <code>mongo</code> client.</li>
+</ul>
+<p>To exercise this, we need to change <code>wal_level</code> to <code>logical</code> and make sure <code>max_wal_senders</code> is at least <code>2</code>, then restart Postgres server after the changes.</p>
+<ul>
+<li>Example of <code>wal2mongo</code> output</li>
+</ul>
+<p><code>wal2mongo</code> is designed to replicate the data changes from Postgres to MongoDB, not like a Postgres standby which need to replicate everything. Therefore, the focus is on the mostly used DML operation such as INSERT, UPDATE and DELETE. The diagram below shows the steps inclduing create a table, insert some records, do some update, and then perform a delete and how the data output looks like.<br><img src="/images/img/w2m-sequence-chart.png" alt="seq chart image"></p>
+<h4 id="2-Automatic-the-environment-setup-using-docker-compose"><a href="#2-Automatic-the-environment-setup-using-docker-compose" class="headerlink" title="2. Automatic the environment setup using docker compose"></a>2. Automatic the environment setup using docker compose</h4><p>Setup an environment like the one mentioned above to test a logical output plugin may take some time, especially when a user just wants to give a quickly try. I will introduce an easy way using docker to do the work. A Docker environment can be very useful when you want to practice a new technology which requires a complicated setup, or multiple machines to be available. It also help when you need such an environment from time to time, especially when you need it to be available “immediately” and then discard it after you finished your work.<br>To achieve such an environment with multiple Postgres servers and one MongoDB server, I built two docker images: one is a dedicated postgres with wal2mongo installed, and the other one is a dedicated mongod with the <code>pg_recvlogical</code> tools installed. Here is a cluster environment running on a sinlge physical machine using the files available at <a href="">here</a>.<br><img src="/images/img/w2m-docker-diagram.png" alt="docker image"></p>
+<ul>
+<li>Dockerfile for postgres<br>This Dockerfile is to build a docker image with the latest PostgreSQL 12.2 offical release and the <code>wal2mongo</code> installed.<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">FROM centos:centos7</span><br><span class="line">MAINTAINER The CentOS Project &lt;cloud-ops@centos.org&gt;</span><br><span class="line"></span><br><span class="line">RUN yum -y install https:&#x2F;&#x2F;download.postgresql.org&#x2F;pub&#x2F;repos&#x2F;yum&#x2F;reporpms&#x2F;EL-7-x86_64&#x2F;pgdg-redhat-repo-latest.noarch.rpm</span><br><span class="line">RUN yum -y update; yum -y install sudo epel-release yum-utils net-tools which \</span><br><span class="line">		postgresql12-server postgresql12 \</span><br><span class="line">		git gcc make clang zlib-devel readline-devel postgresql12-devel; yum clean all</span><br><span class="line"></span><br><span class="line">RUN usermod -aG wheel postgres</span><br><span class="line">RUN echo &quot;export PATH&#x3D;&#x2F;usr&#x2F;pgsql-12&#x2F;bin:$PATH&quot; | tee -a &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;.bashrc</span><br><span class="line">RUN echo &quot;postgres ALL&#x3D;(root) NOPASSWD:ALL&quot; &gt; &#x2F;etc&#x2F;sudoers.d&#x2F;postgres &amp;&amp; chmod 0440 &#x2F;etc&#x2F;sudoers.d&#x2F;postgres</span><br><span class="line"></span><br><span class="line">USER postgres</span><br><span class="line">RUN eval &quot;sudo -E env &quot;PATH&#x3D;$PATH&quot; USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no install&quot;</span><br><span class="line"></span><br><span class="line">VOLUME  [&quot;&#x2F;var&#x2F;log&#x2F;pgsql&quot;, &quot;&#x2F;var&#x2F;lib&#x2F;pgsql&quot;]</span><br><span class="line">EXPOSE 5432</span><br><span class="line"></span><br><span class="line">COPY run.sh .</span><br><span class="line">CMD [&quot;&#x2F;run.sh&quot;]</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>What inside the run.sh script is just a simple postgres start command. The way I used it here is to avoid rebuild the image when you want to start the container in different ways.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">&#x2F;usr&#x2F;pgsql-12&#x2F;bin&#x2F;pg_ctl -D &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data -l &#x2F;var&#x2F;log&#x2F;pgsql&#x2F;logfile start</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>Dockfile for mongod<br>The dockerfile for mongod has the offical MongoDB 4.25 release and pg_recvlogical 12.2 installed.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">FROM centos:centos7</span><br><span class="line">MAINTAINER The CentOS Project &lt;cloud-ops@centos.org&gt;</span><br><span class="line"></span><br><span class="line">COPY mongodb.repo &#x2F;etc&#x2F;yum.repos.d&#x2F;</span><br><span class="line">RUN yum -y install mongodb-org-4.2.5 mongodb-org-server-4.2.5 	\</span><br><span class="line">		mongodb-org-shell-4.2.5 mongodb-org-mongos-4.2.5 		\</span><br><span class="line">		mongodb-org-tools-4.2.5 postgresql12-contrib; yum clean all</span><br><span class="line">RUN mkdir -p &#x2F;data&#x2F;db</span><br><span class="line"></span><br><span class="line">RUN usermod -aG wheel mongod</span><br><span class="line">RUN echo &quot;mongod ALL&#x3D;(root) NOPASSWD:ALL&quot; &gt; &#x2F;etc&#x2F;sudoers.d&#x2F;mongod &amp;&amp; \</span><br><span class="line">		chmod 0440 &#x2F;etc&#x2F;sudoers.d&#x2F;mongod</span><br><span class="line">RUN echo &quot;export PATH&#x3D;&#x2F;usr&#x2F;pgsql-12&#x2F;bin:$PATH&quot; | tee -a &#x2F;root&#x2F;.bashrc</span><br><span class="line">VOLUME  [&quot;&#x2F;data&#x2F;db&quot;, &quot;&#x2F;var&#x2F;log&#x2F;mongodb&quot;]</span><br><span class="line"></span><br><span class="line">EXPOSE 27017</span><br><span class="line">ENTRYPOINT [&quot;&#x2F;usr&#x2F;bin&#x2F;mongod&quot;, &quot;--bind_ip_all&quot;]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Service compose file<br>The service docker compose file is to help setup two Postgres servers and one MongodDB servere, and make sure they are be able to communicate using hostname.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">version: &#39;3.0&#39;</span><br><span class="line"></span><br><span class="line">services:</span><br><span class="line">  mongo:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;mongod:4.2.5&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;27017:27017&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;mgdata:&#x2F;data&#x2F;db</span><br><span class="line">      - .&#x2F;scripts&#x2F;p2m.sh:&#x2F;p2m.sh</span><br><span class="line"></span><br><span class="line">  pg1:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;postgres:12.2&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;5432&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;pg1data:&#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data</span><br><span class="line">      - .&#x2F;scripts&#x2F;data_gen.sh:&#x2F;data_gen.sh</span><br><span class="line"></span><br><span class="line">  pg2:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;postgres:12.2&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;5432&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;pg2data:&#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data</span><br><span class="line">      - .&#x2F;scripts&#x2F;data_gen.sh:&#x2F;data_gen.sh</span><br></pre></td></tr></table></figure>
+<p>You can easily extend the Postgres servers by adding more instances to this service docker compose file.</p>
+</li>
+</ul>
+<p>To build the containers, run command <code>docker-compose -f service-compose.yml up -d</code>. After a while, you should see two Postgres servers and one MongoDB server are running like below.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ docker ps</span><br><span class="line">CONTAINER ID        IMAGE                 COMMAND                  CREATED              STATUS              PORTS                      NAMES</span><br><span class="line">935a3d339e71        mongod:4.2.5          &quot;&#x2F;usr&#x2F;bin&#x2F;mongod --b…&quot;   About a minute ago   Up About a minute   0.0.0.0:27017-&gt;27017&#x2F;tcp   pg2mongo_mongo_1</span><br><span class="line">d9497be07ce5        postgres:12.2         &quot;&#x2F;run.sh&quot;                About a minute ago   Up About a minute   0.0.0.0:54322-&gt;5432&#x2F;tcp    pg2mongo_pg2_1</span><br><span class="line">50eb555b5719        postgres:12.2         &quot;&#x2F;run.sh&quot;                About a minute ago   Up 38 seconds       0.0.0.0:54321-&gt;5432&#x2F;tcp    pg2mongo_pg1_1</span><br></pre></td></tr></table></figure>
+
+<p>To setup the logical replication slot on each postgres server, and connect to each slot using <code>pg_recvlogical</code> then pipe the data changes to <code>mongo</code> client and feed the changes to MongoDB automaticlly, run a command like this <code>docker exec -it pg2mongo_mongo_1 bash /p2m.sh 1 2</code>. Where the <code>p2m.sh</code> is a simple demo script to allow you using <code>pg_recvlogical</code> to create slot, and connect to the slot then dump the message to a internal pipe. Then the <code>mongo</code> client will read the pipe and import the changes to MongoDB. You can check it by log into the mongod container and type a <code>ps -ef</code> to see the running services.</p>
+<ul>
+<li><p>Generate database changes<br>To simulate the data changes, you can use <code>pgbench</code>. There are two ways to do it: one is to log into each postgres instance and type the pgbench command; the other way is to map a local script to all postgres instances, then run the script from your host machine. For example <code>docker exec -it pg2mongo_pg1_1 bash /data_gen.sh</code></p>
+</li>
+<li><p>Verify the data changes<br>To verify the data changes, you can log into the mongod container, and then use the mongo cient to check the data changes imported automatically. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; use mycluster_postgres_w2m_slot2;</span><br><span class="line">switched to db mycluster_postgres_w2m_slot2</span><br><span class="line">&gt; db.pgbench_accounts.count();</span><br><span class="line">10028</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Modify the output plugin and reinstall it<br>You can log into any postgres server and find out the source code and make some changes, then recompile, install it and run a regression test, etc. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">docker exec -it pg2mongo_pg1_1 bash</span><br><span class="line">bash-4.2$ cd &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;sources&#x2F;wal2mongo&#x2F;</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make clean CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make installcheck-force  CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ sudo -E env &quot;PATH&#x3D;$PATH&quot; USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no install</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="3-logical-decoding-output-plugin-limitations"><a href="#3-logical-decoding-output-plugin-limitations" class="headerlink" title="3. logical decoding output plugin limitations"></a>3. logical decoding output plugin limitations</h4><p>The logical decoding output plugin is pretty useful feature, but still has some limitations. For example,</p>
+<ul>
+<li>The tables must have primary key and replica identity need to be set properly</li>
+<li>Database schemas are not be able to be replicated</li>
+<li>Sequences replication is still not supported</li>
+<li>No large objects can be replicated<br>…</li>
+</ul>
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed how to use the logical decoding output plugin to replicate multiple PostgreSQL servers to a single MongoDB server, and provide a docker environment setup to perform a quick Proof Of Concept.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/" rel="prev" title="PostgreSQL GSSAPI Authentication with Kerberos part-3: the status of authentication, encryption and user principal">
+      <i class="fa fa-chevron-left"></i> PostgreSQL GSSAPI Authentication with Kerberos part-3: the status of authentication, encryption and user principal
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Logical-decoding-output-plugin"><span class="nav-number">2.</span> <span class="nav-text">2. Logical decoding output plugin</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Automatic-the-environment-setup-using-docker-compose"><span class="nav-number">3.</span> <span class="nav-text">2. Automatic the environment setup using docker compose</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-logical-decoding-output-plugin-limitations"><span class="nav-number">4.</span> <span class="nav-text">3. logical decoding output plugin limitations</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Summary"><span class="nav-number">5.</span> <span class="nav-text">4. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

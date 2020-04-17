@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/</loc>
+    
+    <lastmod>2020-04-17T20:31:44.694Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://idrawone.github.io/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/</loc>
     
     <lastmod>2020-03-18T20:24:32.339Z</lastmod>
