@@ -65,7 +65,7 @@
 <meta property="og:image" content="https://idrawone.github.io/images/img/win-pro-6.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/win-pro-7.png">
 <meta property="article:published_time" content="2020-05-15T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-05-15T19:29:30.311Z">
+<meta property="article:modified_time" content="2020-05-15T19:32:02.929Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/win-fi.png">
@@ -212,7 +212,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-05-15 01:00:00 / Modified: 12:29:30" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
+              <time title="Created: 2020-05-15 01:00:00 / Modified: 12:32:02" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -277,9 +277,8 @@
 <li>Copy the whole content from <a href="https://github.com/HighgoSoftware/wal2mongo/blob/release/wal2mongo.c" target="_blank" rel="noopener">this file</a> to the newly created <code>wal2mongo.c</code> file</li>
 <li>Add <code>PGDLLEXPORT</code> after the keyword <code>extern</code>, otherwise MSVC will not export its symbol.<br>the original file,<br><img src="/images/img/win-before.png" alt="before change image"><br>and how it looks like after the changes.<br><img src="/images/img/win-after.png" alt="after change image"></li>
 <li>Right click the project, select <code>Properties</code> and then change following in order,<br>1 Click on <code>Configuration Properities</code> -&gt; <code>General</code> -&gt; Configuration Type, then select <code>Dynamic Library (.dll)</code><br><img src="/images/img/win-pro-1.png" alt="vs pro-1 image"><br>2 Click on <code>Configuration Prosperities</code> -&gt; <code>C/C++</code> -&gt; <code>General</code>, add the including paths in the order below<br><img src="/images/img/win-pro-2.png" alt="vs pro-2 image"><br>3 Click on <code>Configuration Prosperities</code> -&gt; <code>C/C++</code> -&gt; <code>Code Generation</code> -&gt; <code>Enable C++ Exceptions</code>, select <code>No</code><br><img src="/images/img/win-pro-3.png" alt="vs pro-3 image"><br>4 <code>Configuration Prosperities</code> -&gt; <code>C/C++</code> -&gt; <code>Advanced</code> -&gt; <code>Compile As</code>, select <code>Compile as C Code(/TC)</code><br><img src="/images/img/win-pro-4.png" alt="vs pro-4 image"><br>5 Click on <code>Configuration Prosperities</code> -&gt; <code>Linker</code> -&gt; <code>General</code> -&gt; <code>Additional Library Directories</code>, enter the lib path where your Postgres libraries are installed<br><img src="/images/img/win-pro-5.png" alt="vs pro-5 image"><br>6 Click on <code>Configuration Prosperities</code> -&gt; <code>Linker</code> -&gt; <code>Input</code> -&gt; <code>Additional Dependencies</code>, add <code>postgres.lib</code><br><img src="/images/img/win-pro-6.png" alt="vs pro-6 image"><br>7 Click on <code>Configuration Prosperities</code> -&gt; <code>Linker</code> -&gt; <code>Manifest File</code> -&gt; <code>Generate Manifest</code>, select <code>No (/MANIFEST:NO)</code><br><img src="/images/img/win-pro-7.png" alt="vs pro-7 image"></li>
-<li>Finally, right click on the project and then select build.<br>If everything goes fine, then you should see <code>wal2mongo.dll</code> is created.</li>
+<li>Finally, right click on the project and then select build.<br>If everything goes fine, then you should see <code>wal2mongo.dll</code> is created. Copy <code>wal2mongo.dll</code> to the lib folder where the Postgres libraries were installed. Then you should be able to test this extension as normal.</li>
 </ul>
-<p>Copy <code>wal2mongo.dll</code> to the lib folder where the Postgres libraries were installed. Then you should be able to test this extension as normal.</p>
 <h4 id="7-Summary"><a href="#7-Summary" class="headerlink" title="7. Summary"></a>7. Summary</h4><p>In this blog, we discussed how to build postgres and extension on Windows, especially to build an extension within VS2019. </p>
 
     </div>
