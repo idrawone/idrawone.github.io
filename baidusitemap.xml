@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://idrawone.github.io/2020/05/15/Build-PostgreSQL-and-Extension-on-Windows/</loc>
+    <lastmod>2020-05-15</lastmod>
+  </url>  <url>
     <loc>https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/</loc>
     <lastmod>2020-04-17</lastmod>
   </url>  <url>
