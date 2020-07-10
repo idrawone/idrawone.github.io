@@ -199,7 +199,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-07-10 01:00:00 / Modified: 15:42:55" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
+              <time title="Created: 2020-07-10 01:00:00 / Modified: 16:11:12" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -231,7 +231,7 @@
 
       
           <p><img src="/images/img/win-fi.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>when I was trying to understand PG source code a little bit more, I always want to find some tools or skills to help. The reason is that, sometimes, I really don’t want to read the code line by line for a particular topic, but I have to figure out something quickly, or simply say, I am kind of “lazy” at that movement. I found one very simple and easy way to help me when I was studying the geo Geometric Types in PostgreSQL. This simple method helps me find out a bug build in 1997, Thanks to Tom Lane’s help to fix it and committed it to Postgresql. The commit is “35d1eefb29d03d5a85f71038679f1f8a14358255”<br>“<br>   Fix circle_in to accept “(x,y),r” as it’s advertised to do.</p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>when I was trying to understand PG source code a little bit in deep, I always want to find some tools or skills to help. The reason is that, sometimes, I really don’t want to read the code line by line for a particular topic, but I have to figure out something quickly, or simply say, I am kind of “lazy” at that movement. I found one very simple and easy way to help me when I was studying the geo Geometric Types in PostgreSQL. This simple method helps me find out a bug build in 1997, Thanks to Tom Lane’s help to fix it and committed it to Postgresql. The commit is “35d1eefb29d03d5a85f71038679f1f8a14358255”<br>“<br>   Fix circle_in to accept “(x,y),r” as it’s advertised to do.</p>
 <pre><code>Our documentation describes four allowed input syntaxes for circles,
 but the regression tests tried only three ... with predictable
 consequences.  Remarkably, this has been wrong since the circle</code></pre><p>datatype was added in 1997, but nobody noticed till now.”<br>In this blog, I will this story to explain how did I figure out the bug.</p>
