@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">7</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">8</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,102 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/07/10/A-simple-way-to-trace-a-bug-when-you-donot-have-enough-time/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/07/10/A-simple-way-to-trace-a-bug-when-you-donot-have-enough-time/" class="post-title-link" itemprop="url">A simple way to trace a bug</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-07-10 01:00:00 / Modified: 15:42:55" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Debug/" itemprop="url" rel="index">
+                    <span itemprop="name">Debug</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/win-fi.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>when I was trying to understand PG source code a little bit more, I always want to find some tools or skills to help. The reason is that, sometimes, I really don’t want to read the code line by line for a particular topic, but I have to figure out something quickly, or simply say, I am kind of “lazy” at that movement. I found one very simple and easy way to help me when I was studying the geo Geometric Types in PostgreSQL. This simple method helps me find out a bug build in 1997, Thanks to Tom Lane’s help to fix it and committed it to Postgresql. The commit is “35d1eefb29d03d5a85f71038679f1f8a14358255”<br>“<br>   Fix circle_in to accept “(x,y),r” as it’s advertised to do.</p>
+<pre><code>Our documentation describes four allowed input syntaxes for circles,
+but the regression tests tried only three ... with predictable
+consequences.  Remarkably, this has been wrong since the circle</code></pre><p>datatype was added in 1997, but nobody noticed till now.”<br>In this blog, I will this story to explain how did I figure out the bug.</p>
+<h4 id="2-Environment-setup"><a href="#2-Environment-setup" class="headerlink" title="2. Environment setup"></a>2. Environment setup</h4><p>A few months ago, I was trying to see what are all the Geometric Types PostgreSQL can support by checking the official <a href="https://www.postgresql.org/docs/current/datatype-geometric.html" target="_blank" rel="noopener">document</a>. In the section 8.8.7. Circles, there is something describe the different ways to insert a circle. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Circles are represented by a center point and radius. Values of type circle are specified using any of the following syntaxes:</span><br><span class="line"></span><br><span class="line">&lt; ( x , y ) , r &gt;</span><br><span class="line">( ( x , y ) , r )</span><br><span class="line">  ( x , y ) , r</span><br><span class="line">    x , y   , r</span><br></pre></td></tr></table></figure>
+<p>I was so suprised that there are some many ways to draw a circle in PostgreSQL, and accidently I had a psql console connected to a server at that moment. So, I decided to try all the data types one by one. However, when I followed the 3rd way to insert a circle, I encountered some errors like below.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE tbl_circle(id serial PRIMARY KEY, a circle);</span><br><span class="line">INSERT INTO tbl_circle(a) VALUES(&#39;( 1 , 1 ) , 5&#39;::circle );</span><br><span class="line"></span><br><span class="line">ERROR:  invalid input syntax for type circle: &quot;( 1 , 1 ) , 5&quot;</span><br><span class="line">LINE 1: INSERT INTO tbl_circle(a) VALUES(&#39;( 1 , 1 ) , 5&#39;::circle );</span><br></pre></td></tr></table></figure>
+<p>The first thoughts came to my mind was that I must typed something wrong, but after carefully check each character, I couldn’t find any error. I conldn’t believe what I saw on the screen, therefore I called my colleague to help me do a quick check, but the result was the same. Then I started to think if I can go a little further to find out the bug before report the community it would help a lot. But, the question is how to find the issue out within limited time (I did have a lot of work need to be done at the same moment, in a simple word, “busy”. Well, “busy” is one of the main reasons I want to discuss about this simple method).</p>
+<p>Obviously, I was not familiar with the data type related circle in PostgreSQL source code, but I do know how to compile from source code and how to use gdb to run a simple debug (keep in mind, these are the prerequisite). </p>
+<p>I started to compile the source code with gdb enabled, like below.<br><code>./configure --enable-cassert --enable-debug CFLAGS=&quot;-ggdb -O0 -g3 -fno-omit-frame-pointer”</code></p>
+<p>After the PostgerSQL server restarted, I used gdb to attach to the running background postgres which connected to my psql console. I set up a breakpoint to the function exec_simple_query (well, this is another prerequisite). I tried to repeat the circle insert command, and the gdb stop at exec_simple_query. Now, I was totally stuck. I didn’t how to locate the bug, I had no idea what was behind the circle data type, and in which file it was implemented. How could I move move to the next step?</p>
+<p>I did have one thing in my mind that was I need to quickly find out the difference between the working data type and the non-working data type. To achieve this, a simple way would just enter “next” and then press “enter”. I started to do it, but after repeated 3 times, I totally gave it up. I didn’t know how many times I have to repeat the process and it was not possible for me to capture the difference. Then I started to question myself whether there was a way to automatically type “next” and then “enter” until the circle insert was finished. By a simply google, I found <a href="https://stackoverflow.com/questions/5812411/gdb-automatic-nexting" target="_blank" rel="noopener">this</a>. I copied and pasted the script and added the breakpoint. The scpript was ended up like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"># file: step_mult.gdb</span><br><span class="line"></span><br><span class="line">set pagination off</span><br><span class="line">set logging file gdb.log</span><br><span class="line">set logging on</span><br><span class="line">break exec_simple_query</span><br><span class="line"></span><br><span class="line">define step_mult</span><br><span class="line">    set $step_mult_max &#x3D; 1000</span><br><span class="line">    if $argc &gt;&#x3D; 1</span><br><span class="line">        set $step_mult_max &#x3D; $arg0</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    set $step_mult_count &#x3D; 0</span><br><span class="line">    while ($step_mult_count &lt; $step_mult_max)</span><br><span class="line">        set $step_mult_count &#x3D; $step_mult_count + 1</span><br><span class="line">        printf &quot;step #%d\n&quot;, $step_mult_count</span><br><span class="line">        step</span><br><span class="line">    end</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p>I re-attach the postgres, ran the command <code>source step_mult.gdb</code> within gdb, and then let the postgres continue to run in the background. I switched to another console and started toinsert a circle using the 3rd way again. Postgres stopped at <code>exec_simple_query</code>, then I ran <code>step_mult 10000</code>. After a while, I saw the error message on my psql console again. I changed the log file gdb.log to gdb-2nd.log and repeated the steps to insert a circle using the 2nd way. Now, I got two gdb log files which contain all the single step for the working and non-working circle data types. </p>
+<p>I used a GUI compare tools to open these two gdb log files. The big difference I saw was showing below (screenshot).<br>Now, I finally figured out where the data type circle was implemented. To proof that it was the right place to fix this issue, I made a quick dirty fix. Then I performed a test and found the 3rd data type was kind of “fixed”. </p>
+<p>At this point, I was more confident to report this issue to the community with my dirty patch to proof that PostgreSQL doesn’t work with the 3rd way. The entire process only took me about an hour (find a bug which has been stayed in PostgreSQL about 23 years in an hour is not so bad). </p>
+<h4 id="3-Summary"><a href="#3-Summary" class="headerlink" title="3.    Summary"></a>3.    Summary</h4><p>PostgreSQL is one of the best open source RDBMS in the world, and there are many other open source projects like it. As a software engineer, we are all either working on them or use them in the daily work, if you find something fishy but don’t have enough time, then try the way I did. It may surprise you. From my opinion, this method may suitable for below sisutations:</p>
+<p>1) one feature is working on your use case but it works on a very similar use case; such as circle<br>2) you want to see the difference in different conditions, such as inset into using memory page<br>3) you want to compare two behaviors in deep from source code point of view;</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -199,7 +295,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-05-15 01:00:00 / Modified: 12:32:02" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
+              <time title="Created: 2020-05-15 01:00:00 / Modified: 15:30:10" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -250,7 +346,7 @@
       
           <p><img src="/images/img/win-fi.png" alt="Featured image"></p>
 <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is an open-source RDMS and running across many platforms including Linux (all recent distributions), Windows, FreeBSD, OpenBSD, NetBSD, Mac OS X, AIX, HP/UX, IRIX, Solaris, Tru64 Unix, and UnixWare. There are many discussions about how to build Postgres and extensions from source code on a Linux-like environment, but sometimes, a developer may want to quickly setup a Windows environment to check a feature for cross-platform support. This blog is going to explain how to build Postgres and extensions from source code on Windows platforms and it was tested on Windows 7, 10 and 2019 Server.</p>
-<h4 id="2-Environment-setup"><a href="#2-Environment-setup" class="headerlink" title="2. Environment setup"></a>2. Environment setup</h4><p>This blog refers to the official <a href="https://www.postgresql.org/docs/12/install-windows-full.html" target="_blank" rel="noopener">document</a> and the blog <a href="https://www.2ndquadrant.com/en/blog/compiling-postgresql-extensions-visual-studio-windows" target="_blank" rel="noopener">Compiling PostgreSQL extensions with Visual Studio on Windows</a>, but providing many detailed screenshots on the latest version Visual Studio 2019 when building an extension alone ???.</p>
+<h4 id="2-Environment-setup"><a href="#2-Environment-setup" class="headerlink" title="2. Environment setup"></a>2. Environment setup</h4><p>This blog refers to the official <a href="https://www.postgresql.org/docs/12/install-windows-full.html" target="_blank" rel="noopener">document</a> and the blog <a href="https://www.2ndquadrant.com/en/blog/compiling-postgresql-extensions-visual-studio-windows" target="_blank" rel="noopener">Compiling PostgreSQL extensions with Visual Studio on Windows</a>, but providing many detailed screenshots on the latest version Visual Studio 2019 for building an extension as a standlone VS2019 project.</p>
 <h5 id="3-Install-VS2019-Windows-SDK-and-other-tools"><a href="#3-Install-VS2019-Windows-SDK-and-other-tools" class="headerlink" title="3. Install VS2019, Windows SDK and other tools"></a>3. Install VS2019, Windows SDK and other tools</h5><p>Download the latest <a href="https://visualstudio.microsoft.com/downloads/?utm_medium=post-banner&utm_source=microsoft.com&utm_campaign=channel+banner&utm_content=launch+vs2019" target="_blank" rel="noopener">Visual Studio 2019</a> package. During the installation process, selecting the option <code>Desktop development with C++</code> is enough to build Postgres. This option will install <code>MSVC for VS 2019</code>, <code>Windows 10 SDK</code> and some basic <code>C/C++ building tools</code>. As described in the official document, <a href="https://platform.activestate.com/activestate/activeperl-5.28/auto-fork?utm_source=activestate.com&utm_medium=referral&utm_content=activeperl-5.28-mac&utm_campaign=user-acquisition" target="_blank" rel="noopener">ActiveState Perl</a> is required to run the build and generate scripts, and <a href="https://platform.activestate.com/activestate/activetcl-8.6/auto-fork?utm_source=activestate.com&utm_medium=referral&utm_content=activetcl-8.6&utm_campaign=user-acquisition" target="_blank" rel="noopener">ActiveState TCL</a> is required for building PL/Tcl. If the you build from a released source code <a href="https://www.postgresql.org/ftp/source/v12.3/" target="_blank" rel="noopener">tar file</a>, then install above tools should be enough for the default configuration, however if you build with the source coded cloned from <a href="https://github.com/postgres/postgres.git" target="_blank" rel="noopener">github</a>, then you need to install <code>Bison</code> and <code>Flex</code>, which can be found <a href="http://www.mingw.org/wiki/MSYS" target="_blank" rel="noopener">here</a>.<br>If you prefer to use Linux style commands as much as possible, then you can install <a href="https://github.com/git-for-windows/git/releases/latest" target="_blank" rel="noopener">git bash</a>. After all the tools has been installed, you need to <code>edit the system environment variables</code> to include all the binaries paths, for example, <img src="/images/img/win-env.png" alt="windows environment image"></p>
 <h5 id="4-Build-postgres"><a href="#4-Build-postgres" class="headerlink" title="4. Build postgres"></a>4. Build postgres</h5><p>If you have an extension need to be built under the source code tree, then it is time to clone or copy your extension to <code>contrib</code> folder before starting the build. To build Postgres is pretty simple, just turn on VS 2019 terminal i.e. <code>Developer Command Prompt for VS 2019</code> and then navigate to the windows build folder inside the postgres source code, for example, <code>c:\Users\Administrator\Downloads\postgres\src\tools\msvc&gt;</code> and then run <code>build.bat</code>.</p>
 <h5 id="5-Regress-test"><a href="#5-Regress-test" class="headerlink" title="5. Regress test"></a>5. Regress test</h5><p>If the build is succeeded, then you can perform a regress test by running <code>vcregress check</code>. To perform a regress test for the extensions, run the command <code>vcregress contribcheck</code>. If you are developing an extension on Windows and you want to speed up the build, then you can build your extension only by running the build script with the extension name, for example, <code>build.bat wal2mongo</code>. However, you can’t run a regress test for each individual extension. This can be worked around by removing all other extension from <code>contrib</code> folder temporally.</p>
@@ -1419,12 +1515,12 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-count">8</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-count">25</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

@@ -65,7 +65,7 @@
 <meta property="og:image" content="https://idrawone.github.io/images/img/win-pro-6.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/win-pro-7.png">
 <meta property="article:published_time" content="2020-05-15T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-05-15T19:32:02.929Z">
+<meta property="article:modified_time" content="2020-05-15T22:30:10.898Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/win-fi.png">
@@ -159,7 +159,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">7</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">8</span></a>
 
   </li>
   </ul>
@@ -212,7 +212,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-05-15 01:00:00 / Modified: 12:32:02" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
+              <time title="Created: 2020-05-15 01:00:00 / Modified: 15:30:10" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -263,7 +263,7 @@
       
         <p><img src="/images/img/win-fi.png" alt="Featured image"></p>
 <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is an open-source RDMS and running across many platforms including Linux (all recent distributions), Windows, FreeBSD, OpenBSD, NetBSD, Mac OS X, AIX, HP/UX, IRIX, Solaris, Tru64 Unix, and UnixWare. There are many discussions about how to build Postgres and extensions from source code on a Linux-like environment, but sometimes, a developer may want to quickly setup a Windows environment to check a feature for cross-platform support. This blog is going to explain how to build Postgres and extensions from source code on Windows platforms and it was tested on Windows 7, 10 and 2019 Server.</p>
-<h4 id="2-Environment-setup"><a href="#2-Environment-setup" class="headerlink" title="2. Environment setup"></a>2. Environment setup</h4><p>This blog refers to the official <a href="https://www.postgresql.org/docs/12/install-windows-full.html" target="_blank" rel="noopener">document</a> and the blog <a href="https://www.2ndquadrant.com/en/blog/compiling-postgresql-extensions-visual-studio-windows" target="_blank" rel="noopener">Compiling PostgreSQL extensions with Visual Studio on Windows</a>, but providing many detailed screenshots on the latest version Visual Studio 2019 when building an extension alone ???.</p>
+<h4 id="2-Environment-setup"><a href="#2-Environment-setup" class="headerlink" title="2. Environment setup"></a>2. Environment setup</h4><p>This blog refers to the official <a href="https://www.postgresql.org/docs/12/install-windows-full.html" target="_blank" rel="noopener">document</a> and the blog <a href="https://www.2ndquadrant.com/en/blog/compiling-postgresql-extensions-visual-studio-windows" target="_blank" rel="noopener">Compiling PostgreSQL extensions with Visual Studio on Windows</a>, but providing many detailed screenshots on the latest version Visual Studio 2019 for building an extension as a standlone VS2019 project.</p>
 <h5 id="3-Install-VS2019-Windows-SDK-and-other-tools"><a href="#3-Install-VS2019-Windows-SDK-and-other-tools" class="headerlink" title="3. Install VS2019, Windows SDK and other tools"></a>3. Install VS2019, Windows SDK and other tools</h5><p>Download the latest <a href="https://visualstudio.microsoft.com/downloads/?utm_medium=post-banner&utm_source=microsoft.com&utm_campaign=channel+banner&utm_content=launch+vs2019" target="_blank" rel="noopener">Visual Studio 2019</a> package. During the installation process, selecting the option <code>Desktop development with C++</code> is enough to build Postgres. This option will install <code>MSVC for VS 2019</code>, <code>Windows 10 SDK</code> and some basic <code>C/C++ building tools</code>. As described in the official document, <a href="https://platform.activestate.com/activestate/activeperl-5.28/auto-fork?utm_source=activestate.com&utm_medium=referral&utm_content=activeperl-5.28-mac&utm_campaign=user-acquisition" target="_blank" rel="noopener">ActiveState Perl</a> is required to run the build and generate scripts, and <a href="https://platform.activestate.com/activestate/activetcl-8.6/auto-fork?utm_source=activestate.com&utm_medium=referral&utm_content=activetcl-8.6&utm_campaign=user-acquisition" target="_blank" rel="noopener">ActiveState TCL</a> is required for building PL/Tcl. If the you build from a released source code <a href="https://www.postgresql.org/ftp/source/v12.3/" target="_blank" rel="noopener">tar file</a>, then install above tools should be enough for the default configuration, however if you build with the source coded cloned from <a href="https://github.com/postgres/postgres.git" target="_blank" rel="noopener">github</a>, then you need to install <code>Bison</code> and <code>Flex</code>, which can be found <a href="http://www.mingw.org/wiki/MSYS" target="_blank" rel="noopener">here</a>.<br>If you prefer to use Linux style commands as much as possible, then you can install <a href="https://github.com/git-for-windows/git/releases/latest" target="_blank" rel="noopener">git bash</a>. After all the tools has been installed, you need to <code>edit the system environment variables</code> to include all the binaries paths, for example, <img src="/images/img/win-env.png" alt="windows environment image"></p>
 <h5 id="4-Build-postgres"><a href="#4-Build-postgres" class="headerlink" title="4. Build postgres"></a>4. Build postgres</h5><p>If you have an extension need to be built under the source code tree, then it is time to clone or copy your extension to <code>contrib</code> folder before starting the build. To build Postgres is pretty simple, just turn on VS 2019 terminal i.e. <code>Developer Command Prompt for VS 2019</code> and then navigate to the windows build folder inside the postgres source code, for example, <code>c:\Users\Administrator\Downloads\postgres\src\tools\msvc&gt;</code> and then run <code>build.bat</code>.</p>
 <h5 id="5-Regress-test"><a href="#5-Regress-test" class="headerlink" title="5. Regress test"></a>5. Regress test</h5><p>If the build is succeeded, then you can perform a regress test by running <code>vcregress check</code>. To perform a regress test for the extensions, run the command <code>vcregress contribcheck</code>. If you are developing an extension on Windows and you want to speed up the build, then you can build your extension only by running the build script with the extension name, for example, <code>build.bat wal2mongo</code>. However, you can’t run a regress test for each individual extension. This can be worked around by removing all other extension from <code>contrib</code> folder temporally.</p>
@@ -298,7 +298,10 @@
     <a href="/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/" rel="prev" title="Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin">
       <i class="fa fa-chevron-left"></i> Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/07/10/A-simple-way-to-trace-a-bug-when-you-donot-have-enough-time/" rel="next" title="A simple way to trace a bug">
+      A simple way to trace a bug <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -374,12 +377,12 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-count">8</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-count">25</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
