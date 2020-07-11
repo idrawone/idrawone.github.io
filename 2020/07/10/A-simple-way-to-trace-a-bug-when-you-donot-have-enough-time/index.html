@@ -56,7 +56,7 @@
 <meta property="og:image" content="https://idrawone.github.io/images/img/fi-gdb-step-mult.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/gdb-step-diff.png">
 <meta property="article:published_time" content="2020-07-10T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-11T18:49:18.207Z">
+<meta property="article:modified_time" content="2020-07-11T18:53:36.544Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-gdb-step-mult.png">
@@ -209,7 +209,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-07-11 11:49:18" itemprop="dateModified" datetime="2020-07-11T11:49:18-07:00">2020-07-11</time>
+                <time title="Modified: 2020-07-11 11:53:36" itemprop="dateModified" datetime="2020-07-11T11:53:36-07:00">2020-07-11</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -245,7 +245,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Fix circle_in to accept &quot;(x,y),r&quot; as it&#39;s advertised to do.</span><br><span class="line"></span><br><span class="line">Our documentation describes four allowed input syntaxes for circles,</span><br><span class="line">but the regression tests tried only three ... with predictable</span><br><span class="line">consequences.  Remarkably, this has been wrong since the circle</span><br><span class="line">datatype was added in 1997, but nobody noticed till now.</span><br></pre></td></tr></table></figure>
 
 <p>In this blog, I will use this story to explain how did I figure out this bug using a script in a very simple way.</p>
-<h4 id="2-Find-a-bug-back-to-1997"><a href="#2-Find-a-bug-back-to-1997" class="headerlink" title="2. Find a bug back to 1997"></a>2. Find a bug back to 1997</h4><p>A few months ago, I was trying to see what was all the Geometric Types PostgreSQL can support by checking the official <a href="https://www.postgresql.org/docs/current/datatype-geometric.html" target="_blank" rel="noopener">document</a>. In the section <code>8.8.7. Circles</code>, the different ways to insert a circle were described like below. </p>
+<h4 id="2-Find-a-bug-born-in-1997"><a href="#2-Find-a-bug-born-in-1997" class="headerlink" title="2. Find a bug born in 1997"></a>2. Find a bug born in 1997</h4><p>A few months ago, I was trying to see what was all the Geometric Types PostgreSQL can support by checking the official <a href="https://www.postgresql.org/docs/current/datatype-geometric.html" target="_blank" rel="noopener">document</a>. In the section <code>8.8.7. Circles</code>, the different ways to insert a circle were described like below. </p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Circles are represented by a center point and radius. Values of type circle are specified using any of the following syntaxes:</span><br><span class="line"></span><br><span class="line">&lt; ( x , y ) , r &gt;</span><br><span class="line">( ( x , y ) , r )</span><br><span class="line">  ( x , y ) , r</span><br><span class="line">    x , y   , r</span><br></pre></td></tr></table></figure>
 <p>I was so suprised that there are some many ways to draw a circle in PostgreSQL, and accidently I had a psql console connected to a server at that moment. So, I decided to try all the methods one by one. However, when I followed the 3rd way to insert a circle, I encountered an error, i.e. <code>invalid input syntax for type circle</code>. Here is the what did at that moment.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE tbl_circle(id serial PRIMARY KEY, a circle);</span><br><span class="line">INSERT INTO tbl_circle(a) VALUES(&#39;( 1 , 1 ) , 5&#39;::circle );</span><br><span class="line"></span><br><span class="line">ERROR:  invalid input syntax for type circle: &quot;( 1 , 1 ) , 5&quot;</span><br><span class="line">LINE 1: INSERT INTO tbl_circle(a) VALUES(&#39;( 1 , 1 ) , 5&#39;::circle );</span><br></pre></td></tr></table></figure>
@@ -340,7 +340,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Find-a-bug-back-to-1997"><span class="nav-number">2.</span> <span class="nav-text">2. Find a bug back to 1997</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Summary"><span class="nav-number">3.</span> <span class="nav-text">3.    Summary</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Find-a-bug-born-in-1997"><span class="nav-number">2.</span> <span class="nav-text">2. Find a bug born in 1997</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Summary"><span class="nav-number">3.</span> <span class="nav-text">3.    Summary</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
