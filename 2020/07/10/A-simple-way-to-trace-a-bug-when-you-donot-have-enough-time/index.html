@@ -55,7 +55,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://idrawone.github.io/images/img/win-fi.png">
 <meta property="article:published_time" content="2020-07-10T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-11T00:05:46.915Z">
+<meta property="article:modified_time" content="2020-07-11T00:07:57.648Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/win-fi.png">
@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-07-10 01:00:00 / Modified: 17:05:46" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
+              <time title="Created: 2020-07-10 01:00:00 / Modified: 17:07:57" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -234,7 +234,7 @@
 
       
         <p><img src="/images/img/win-fi.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Whenever I am trying to study PostgreSQL source code a little bit in deep, I always want to find some tools to help me. The reason is that, sometimes, I really don’t want to read the code line by line for a particular topic, but I may have to figure out something quickly, or simply say, I am kind of “lazy” at that movement. I found one very simple and easy way to help me when I was studying the geo Geometric Types in PostgreSQL. This simple method helped me find out a bug exist since <code>1997</code>. Thanks to Tom Lane who helpped fix it and committed it to Postgresql. The commit is “35d1eefb29d03d5a85f71038679f1f8a14358255” with below comments.</p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Whenever I am trying to study PostgreSQL source code a little bit in deep, I always want to find some tools to help me. The reason is that, sometimes, I really don’t want to read the code line by line for a particular topic, but I may have to figure out something quickly, or simply say, I am kind of “lazy” at that movement. I found one very simple and easy way to help me when I was studying the Geometric Types in PostgreSQL. This simple method helped me find out a bug exist since <code>1997</code>. Thanks to Tom Lane who helpped fix it and committed it to Postgresql. The commit is “35d1eefb29d03d5a85f71038679f1f8a14358255” with below comments.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Fix circle_in to accept &quot;(x,y),r&quot; as it&#39;s advertised to do.</span><br><span class="line"></span><br><span class="line">Our documentation describes four allowed input syntaxes for circles,</span><br><span class="line">but the regression tests tried only three ... with predictable</span><br><span class="line">consequences.  Remarkably, this has been wrong since the circle</span><br><span class="line">datatype was added in 1997, but nobody noticed till now.</span><br></pre></td></tr></table></figure>
 
 <p>In this blog, I will use this story to explain how did I figure out this bug using a script in a very simple way.</p>
