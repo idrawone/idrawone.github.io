@@ -54,8 +54,9 @@
 <meta property="og:description" content="1. OverviewWhenever I tried to study PostgreSQL source code a little deeper, I always wanted to find some tools to help me understand better as I really don’t want to read the code line by line for a">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://idrawone.github.io/images/img/win-fi.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/gdb-step-diff.png">
 <meta property="article:published_time" content="2020-07-10T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-11T00:29:07.579Z">
+<meta property="article:modified_time" content="2020-07-11T03:53:08.586Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/win-fi.png">
@@ -202,7 +203,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-07-10 01:00:00 / Modified: 17:29:07" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
+              <time title="Created: 2020-07-10 01:00:00 / Modified: 20:53:08" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -250,7 +251,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"># file: step_mult.gdb</span><br><span class="line"></span><br><span class="line">set pagination off</span><br><span class="line">set logging file gdb.log</span><br><span class="line">set logging on</span><br><span class="line">break exec_simple_query</span><br><span class="line"></span><br><span class="line">define step_mult</span><br><span class="line">    set $step_mult_max &#x3D; 1000</span><br><span class="line">    if $argc &gt;&#x3D; 1</span><br><span class="line">        set $step_mult_max &#x3D; $arg0</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    set $step_mult_count &#x3D; 0</span><br><span class="line">    while ($step_mult_count &lt; $step_mult_max)</span><br><span class="line">        set $step_mult_count &#x3D; $step_mult_count + 1</span><br><span class="line">        printf &quot;step #%d\n&quot;, $step_mult_count</span><br><span class="line">        step</span><br><span class="line">    end</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
 
 <p>I re-attach the postgres, ran the command <code>source step_mult.gdb</code> within gdb console, and then let the postgres continue to run in the background. I switched to another console and started to insert a circle using the 3rd way again. Postgres stopped at <code>exec_simple_query</code>, then I ran <code>step_mult 10000</code>. After a while, I saw the error message on my psql console again. I changed the log file gdb.log to gdb-2nd.log and repeated the steps, but this time I inserted a circle using the 2nd way. Now, I got two gdb log files which contain all the single step for the working and non-working circle data types.</p>
-<p>I used a very nice GUI comparision tools to compare these two gdb log files. The big difference I saw was showing in <code>circle_in</code> function within <code>src/backend/utils/adt/geo_ops.c</code>.</p>
+<p>I used a very nice GUI comparision tools to compare these two gdb log files and I foud the difference like [this]<img src="/images/img/gdb-step-diff.png" alt="diff image">. The big difference I saw was showing in <code>circle_in</code> function within <code>src/backend/utils/adt/geo_ops.c</code>.</p>
 <p>Now, I figured out where the data type circle was implemented. To proof that it was the right place to fix this issue, I made a quick dirty fix. Then I performed a test and found the 3rd data type was kind of <code>fixed</code>. </p>
 <p>At this point, I was more confident to report this issue to the community with my <code>dirty</code> patch to proof that PostgreSQL doesn’t work with the 3rd way to draw a circle. The entire process took me about an hour, but I think finding out a bug which has stayed in PostgreSQL about 23 years in an hour is not that bad. </p>
 <h4 id="3-Summary"><a href="#3-Summary" class="headerlink" title="3.    Summary"></a>3.    Summary</h4><p>PostgreSQL is one of the best open source RDBMS in the world, and there are many other open source projects like it. As a software engineer, you might encounter something like me in your daily work. If you find something fishy but don’t have enough time, then try the way I did. It may surprise you, who knows. From my opinion, this method may be suitable for below sisutations:</p>
