@@ -199,7 +199,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-08-21 01:00:00 / Modified: 16:15:49" itemprop="dateCreated datePublished" datetime="2020-08-21T01:00:00-07:00">2020-08-21</time>
+              <time title="Created: 2020-08-21 01:00:00 / Modified: 16:26:40" itemprop="dateCreated datePublished" datetime="2020-08-21T01:00:00-07:00">2020-08-21</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -306,7 +306,7 @@
 <h5 id="psql-client-using-a-wrong-global-address-as-source-address"><a href="#psql-client-using-a-wrong-global-address-as-source-address" class="headerlink" title="psql client using a wrong global address as source address"></a>psql client using a wrong global address as source address</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h 2020:2::db1</span><br><span class="line">psql: error: could not connect to server: FATAL:  no pg_hba.conf entry for host &quot;2020:1::8dcf:b8be:dbcc:26c6&quot;, user &quot;dbtest&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
 <p>This is due to multiple IPv6 global addresses available on the same interface. In this case, the application, i.e. <code>psql</code> should have an option to select the preferred IPv6, otherwise, the kernel will pick up the IPv6 global address based on predefined policy and rules. Please check <a href="http://linux-ip.net/html/routing-saddr-selection.html" target="_blank" rel="noopener">Source Address Selection</a> for details. A simple solution is the remove other global IPv6 addresses, and disable the corresponding <code>service</code> i.e. <code>radvd</code> or <code>DHCPv6</code> server.</p>
 <h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6.    Summary"></a>6.    Summary</h4><p>We demonstrated how to setup a simple IPv6 network with one Postgres server and one psql client. To enable the IPv6 configuration is pretty simple on PostgreSQL side, but some the basic IPv6 knowledge is required.</p>
-<p>1) [Configuring IPv6 addresses] (<a href="https://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/ch06s02.html" target="_blank" rel="noopener">https://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/ch06s02.html</a>)</p>
+<p>Ref: [Configuring IPv6 addresses] (<a href="https://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/ch06s02.html" target="_blank" rel="noopener">https://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/ch06s02.html</a>)</p>
 
       
     </div>
