@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">10</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">11</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,131 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/10/23/Heap-freespace-in-details/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/10/23/Heap-freespace-in-details/" class="post-title-link" itemprop="url">Heap free space in details</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-10-23 01:00:00 / Modified: 15:01:41" itemprop="dateCreated datePublished" datetime="2020-10-23T01:00:00-07:00">2020-10-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/" itemprop="url" rel="index">
+                    <span itemprop="name">Heap</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/Page/" itemprop="url" rel="index">
+                    <span itemprop="name">Page</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/Page/Extension/" itemprop="url" rel="index">
+                    <span itemprop="name">Extension</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/Page/Extension/Freespace/" itemprop="url" rel="index">
+                    <span itemprop="name">Freespace</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-heap-page.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Previously, we discussed the <code>MAIN</code> fork file and corresponding extension <a href="https://www.highgo.ca/2020/10/09/heap-file-and-page-in-details" target="_blank" rel="noopener">Heap file and page in details</a>. This blog will explain a little bit more about the Free Space File and corresponding extension.</p>
+<h4 id="2-What-is-a-Free-Space-Mapping-file"><a href="#2-What-is-a-Free-Space-Mapping-file" class="headerlink" title="2. What is a Free Space Mapping file"></a>2. What is a Free Space Mapping file</h4><p>A Free Space Mapping, FSM, file is a file that keeps tracking the availability of free space inside a page. The FSM file is used to quickly locate a page with enough<br>free space to hold a record to be stored during insertion, and it will be updated during an insertion or a vacuum on the table.</p>
+<p>Start from PostgreSQL 8.4 each relation has its own extensible FSM files stored on disk. The FSM file is stored under its relation folder. From previous example, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create table orders1 (id int4, test text) using heap;</span><br><span class="line">postgres&#x3D;# insert into orders1 values(1, &#39;hello world!&#39;);</span><br></pre></td></tr></table></figure>
+<p>You will see the heap files under the database folder like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ ls -ltrh &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384*</span><br><span class="line">-rw------- 1 user user  24K Oct  8 14:33 &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384_fsm</span><br><span class="line">-rw------- 1 user user 8.0K Oct  8 14:34 &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384_vm</span><br><span class="line">-rw------- 1 user user 512K Oct  8 14:34 &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384</span><br></pre></td></tr></table></figure>
+<p>Where <code>16384</code> is the table orders1’s oid, and <code>16384_fsm</code> is the corresponding <code>Free Space Mapping</code> file.</p>
+<h4 id="3-How-the-Free-Space-Mapping-files-are-managed"><a href="#3-How-the-Free-Space-Mapping-files-are-managed" class="headerlink" title="3. How the Free Space Mapping files are managed"></a>3. How the Free Space Mapping files are managed</h4><p>Before PostgreSQL 8.4, the FSM is maintained in memory with the limitation of fixed-size. Now, all FSM files are on disk and can be extended in the same way as heap segmentation files. The FSM files will be updated during an insertion and a Vacuum process either periodically or triggered manually. In some conditions, the FSM may need to be rebuilt, for example, if a leaf node’s value is less than the root node or if there is truncate operation.</p>
+<p>FSM file is mainly used to quickly locate a page for insert operation and in the meantime it helps to speed up the insertion by trying to inert records in existing pages instead of extend a new page. By doing this, it not only help speed up the insertion but also help improve the selection performance. Moreover, the user to implement various strategies, like preferring pages closer to a given page, or spreading the load across the table. </p>
+<h4 id="4-What-is-inside-in-an-FSM-page"><a href="#4-What-is-inside-in-an-FSM-page" class="headerlink" title="4. What is inside in an FSM page"></a>4. What is inside in an FSM page</h4><p>Inside the FSM page, there are two binary tree structure are used: low-level binary tree is used to record the amount of free space on each heap page; high-level binary tree is used scale up the low-level data structure. For details, please reference the <a href="https://github.com/postgres/postgres/blob/master/src/backend/storage/freespace/README" target="_blank" rel="noopener">README</a>.</p>
+<h4 id="5-The-extension-for-FSM"><a href="#5-The-extension-for-FSM" class="headerlink" title="5. The extension for FSM"></a>5. The extension for FSM</h4><p>The <code>pg_freespacemap</code> extension provides the functions that allow you to inspect the free space in each page for a given relation/table. So far, there is only one function provide in <code>pg_freespacemap</code>, i.e. <code>pg_freespace</code>. This function can be used retrieve the amount of free space on each page by giving different parameters. To use this extension, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create extension pg_freespacemap;</span><br><span class="line">CREATE EXTENSION</span><br><span class="line">postgres&#x3D;# create table orders1 (id int4, test text);</span><br><span class="line">CREATE TABLE</span><br><span class="line">postgres&#x3D;# insert into orders1 values(generate_series(1,1000), &#39;hello world!&#39;);</span><br><span class="line">INSERT 0 1000</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>retrieve free space for all pages <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# vacuum orders1;</span><br><span class="line">VACUUM</span><br><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;);</span><br><span class="line"> blkno | avail </span><br><span class="line">-------+-------</span><br><span class="line">     0 |     0</span><br><span class="line">     1 |     0</span><br><span class="line">     2 |     0</span><br><span class="line">     3 |     0</span><br><span class="line">     4 |     0</span><br><span class="line">     5 |     0</span><br><span class="line">     6 |  5120</span><br><span class="line">(7 rows)</span><br></pre></td></tr></table></figure>
+From the above results, it tells that the first 5 pages are all full, only the last page, page6, has some free space are available. </li>
+</ul>
+<p>Let’s delete different number of records in each page, and then check free space again to what is happening inside.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# delete from orders1 where id%2&#x3D;1 and id &lt; 158;</span><br><span class="line">DELETE 79</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%4&#x3D;1 and id &gt;&#x3D; 158 and id &lt; 315;</span><br><span class="line">DELETE 39</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%8&#x3D;1 and id &gt;&#x3D; 315 and id &lt; 472;</span><br><span class="line">DELETE 19</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%16&#x3D;1 and id &gt;&#x3D; 472 and id &lt; 629;</span><br><span class="line">DELETE 10</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%32&#x3D;1 and id &gt;&#x3D; 629 and id &lt; 786;</span><br><span class="line">DELETE 5</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%64&#x3D;1 and id &gt;&#x3D; 786;</span><br><span class="line">DELETE 3</span><br><span class="line">postgres&#x3D;# vacuum orders1;</span><br><span class="line">VACUUM</span><br><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;);</span><br><span class="line"> blkno | avail </span><br><span class="line">-------+-------</span><br><span class="line">     0 |  3776</span><br><span class="line">     1 |  1856</span><br><span class="line">     2 |   896</span><br><span class="line">     3 |   480</span><br><span class="line">     4 |   224</span><br><span class="line">     5 |    96</span><br><span class="line">     6 |  5184</span><br><span class="line">(7 rows)</span><br></pre></td></tr></table></figure>
+<p>Now, we see can the amount of free space is different and it depends on how many records has been deleted.</p>
+<ul>
+<li><p>retrieve free space for a specific page<br>The <code>pg_freespace</code> also allow you to check the amount of free space available in a specified page, for example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;, 3);</span><br><span class="line"> pg_freespace </span><br><span class="line">--------------</span><br><span class="line">          480</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>insert using free space<br>From the above delete examples, we know how many records deleted in each page, in other words, the maximum records can fit in for each page. Let’s perform some insertion test.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# insert into orders1 values(generate_series(1,65), &#39;hello world!&#39;);</span><br><span class="line">INSERT 0 65</span><br><span class="line">postgres&#x3D;# vacuum orders1;</span><br><span class="line">VACUUM</span><br><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;);</span><br><span class="line"> blkno | avail </span><br><span class="line">-------+-------</span><br><span class="line">     0 |   672</span><br><span class="line">     1 |  1856</span><br><span class="line">     2 |   896</span><br><span class="line">     3 |   480</span><br><span class="line">     4 |   224</span><br><span class="line">     5 |    96</span><br><span class="line">     6 |  5184</span><br><span class="line">(7 rows)</span><br></pre></td></tr></table></figure>
+<p>From the results above, we can see the records was inserted to the first page, instead of allocating a new page.</p>
+</li>
+</ul>
+<h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6.    Summary"></a>6.    Summary</h4><p>We explained why there is a free space mapping file under corresponding relation folder, how the free space mapping files are managed, and demonstrated how to use the extension <code>pg_freespacemap</code> to check what happens when user performed some insert, delete and vacuum. In next blog, I will explain the visibility mapping files.</p>
+<p>Ref: <a href="https://www.postgresql.org/docs/current/storage-file-layout.html" target="_blank" rel="noopener">PG Database File Layout</a></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -199,7 +324,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-10-09 01:00:00 / Modified: 16:10:23" itemprop="dateCreated datePublished" datetime="2020-10-09T01:00:00-07:00">2020-10-09</time>
+              <time title="Created: 2020-10-09 01:00:00 / Modified: 16:47:06" itemprop="dateCreated datePublished" datetime="2020-10-09T01:00:00-07:00">2020-10-09</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -333,7 +458,7 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
 </ul>
 <p>This extension provides an easy way to observe how a heap page is changed when performing insert, delete and vacuum. The same behaviour can be observed on the heap file when using hexdump command (<code>checkpoint</code> may require to force the memory page to be flushed to heap file after each operation).</p>
 <h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6.    Summary"></a>6.    Summary</h4><p>We explained how the heap files are created, the internal data structure of heap file and page (a segment of a heap file), and demonstrated how to use the extension <code>pageinspect</code> to check what happens when user performed some insert, delete and vacuum. In the coming blogs, I will explain the free space mapping file and the visibility mapping file in the same way.</p>
-<p>Ref: [PG Database File Layout] (<a href="https://www.postgresql.org/docs/current/storage-file-layout.html" target="_blank" rel="noopener">https://www.postgresql.org/docs/current/storage-file-layout.html</a>)</p>
+<p>Ref: <a href="https://www.postgresql.org/docs/current/storage-file-layout.html" target="_blank" rel="noopener">PG Database File Layout</a></p>
 
       
     </div>
@@ -1599,194 +1724,12 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2019/12/30/How-to-build-PostgreSQL-source-code-using-Eclipse-on-Ubuntu-18.04/" class="post-title-link" itemprop="url">How to build and debug PostgreSQL 12 using latest Eclipse IDE on Ubuntu 18.04</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-
-              <time title="Created: 2019-12-30 00:50:00" itemprop="dateCreated datePublished" datetime="2019-12-30T00:50:00-08:00">2019-12-30</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-01-19 12:51:24" itemprop="dateModified" datetime="2020-01-19T12:51:24-08:00">2020-01-19</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Eclipse/" itemprop="url" rel="index">
-                    <span itemprop="name">Eclipse</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Eclipse/Debug/" itemprop="url" rel="index">
-                    <span itemprop="name">Debug</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>This tutorial provides detailed instructions to help a newbie setup the building and debugging environment with the latest <code>Eclipse IDE for C/C++ Developers</code> for current <code>Postgres 12.1</code> release on <code>LTS Ubuntu 18.04</code>. Below is the key requirement.</p>
-<ul>
-<li>Linux: ubuntu-18.04.3-desktop-amd64</li>
-<li>Postgres: REL_12_STABLE branch</li>
-<li>Eclipse: eclipse-cpp-2019-12-R-linux-gtk-x86_64.tar.gz</li>
-</ul>
-<h4 id="2-Install-Ubuntu-18-04-Desktop"><a href="#2-Install-Ubuntu-18-04-Desktop" class="headerlink" title="2. Install Ubuntu 18.04 Desktop"></a>2. Install Ubuntu 18.04 Desktop</h4><p>Go to the Ubuntu official <a href="https://ubuntu.com/download/desktop" target="_blank" rel="noopener">website</a> to download the latest LTS Ubuntu 18.04.3 Desktop (64-bit) and Install it on a virtual machine such as VirtualBox. The option “Minimal Installation” with web browser and basic utilities is good enough for this tutorial.</p>
-<h4 id="3-Install-git-and-checkout-PostgreSQL-source-code"><a href="#3-Install-git-and-checkout-PostgreSQL-source-code" class="headerlink" title="3. Install git and checkout PostgreSQL source code"></a>3. Install git and checkout PostgreSQL source code</h4><p>PostgreSQL has the source code available on github, in order to check out the source code, you need to install git using the command below.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo apt install git -y</span><br></pre></td></tr></table></figure>
-
-<p>PostgreSQL has a version 12 released in October 2019, and later was upgraded to 12.1 in November. This tutorial will use the latest PostgreSQL12 stable branch to explain how to build and debug the source code using the latest Eclipse IDE. Run the commands below to check out version 12.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">$ mkdir sandbox</span><br><span class="line">$ cd sandbox&#x2F;</span><br><span class="line">$ git clone https:&#x2F;&#x2F;github.com&#x2F;postgres&#x2F;postgres</span><br><span class="line">$ cd postgres&#x2F;</span><br><span class="line">$ git checkout REL_12_STABLE</span><br><span class="line">$ git branch</span><br><span class="line">* REL_12_STABLE</span><br></pre></td></tr></table></figure>
-<p>Now, we are on PostgreSQL 12 stable release branch.</p>
-<h4 id="4-Install-PostgreSQL-build-dependency"><a href="#4-Install-PostgreSQL-build-dependency" class="headerlink" title="4. Install PostgreSQL build dependency"></a>4. Install PostgreSQL build dependency</h4><p>In order to build PostgreSQL source code, we need to install the basic build dependency with below command.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo apt install -y pkg-config build-essential ibreadline-devbison flex</span><br></pre></td></tr></table></figure>
-<p>With the command above, the basic libraries and utilities for building c and cpp code will be installed, such as, dpkg-dev, gcc, g++, make and libc6-dev. Moreover, the libraries and tools required by PostgreSQL such as libreadline, zlib, bison and flex will also be installed as well.</p>
-<h4 id="5-Configure-PostgreSQL-and-generate-Makefiles"><a href="#5-Configure-PostgreSQL-and-generate-Makefiles" class="headerlink" title="5. Configure PostgreSQL and generate Makefiles"></a>5. Configure PostgreSQL and generate Makefiles</h4><p>Before importing PostgreSQL source code into Eclipse as a project, we need to use the configure script provided by PostgreSQL to generate the Makefiles. Run the command below to prepare the Makefiles for Eclipse later to use.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ .&#x2F;configure --prefix&#x3D;$HOME&#x2F;eclipse-workspace&#x2F;postgres --enable-debug CFLAGS&#x3D;&#39;-O0&#39;</span><br></pre></td></tr></table></figure>
-
-<p><code>--prefix</code> is used to define the installation path, in this case, all the PostgreSQl binaries, libraries, and utilities will be installed to $HOME/eclipse-workspace</p>
-<p><code>--enable-debug</code> is used to enable gdb debugging option, so that we can use Eclipse to set up a breakpoint to trace the source code.</p>
-<p><code>--CFLAG</code> is used to specify the compile options, <code>-O0</code> is used to remove code optimization.</p>
-<p>If all the dependency has been installed properly, then <code>Makefile.global</code> should be generated in <code>./src</code> folder. To verify the <code>Makefile.global</code> has been created properly, using <code>vi</code> to open it and check the <code>CFLAG</code> parameter to make sure <code>-g</code> and <code>-O0</code> are set. It should look like below.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CFLAGS &#x3D; -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror&#x3D;vla -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision&#x3D;standard -Wno-format-truncation -g -O0</span><br></pre></td></tr></table></figure>
-
-<p>It is better to run the commands below to test if everything has been set up properly before import posgtres source code into Eclipse. After a while, if you see the message <em>“All of PostgreSQL successfully made. Ready to install.”</em> then we are ready to setup Eclipse IDE.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ cd $HOME&#x2F;sandbox&#x2F;postgres</span><br><span class="line">$ make</span><br><span class="line">… …</span><br><span class="line">All of PostgreSQL successfully made. Ready to install.</span><br></pre></td></tr></table></figure>
-
-
-<h4 id="6-Install-Eclipse-IDE-for-C-C-Developers"><a href="#6-Install-Eclipse-IDE-for-C-C-Developers" class="headerlink" title="6. Install Eclipse IDE for C/C++ Developers"></a>6. Install Eclipse IDE for C/C++ Developers</h4><p>Now, go to the Eclipse website and download the latest <code>Eclipse IDE for C/C++ Developers</code> for Linux <code>64-bit</code>. After the download is finished, simply untar the file to a folder, for example, <code>/opt</code>. If you prefer to open the Eclipse from Desktop, then you need to run below commands to set up the <code>Desktop Shortcut</code>. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># Update Packages Index</span><br><span class="line">$ sudo apt-get update</span><br><span class="line"></span><br><span class="line"># Install GNOME Panel</span><br><span class="line">$ sudo apt-get install --no-install-recommends gnome-panel -y</span><br><span class="line"></span><br><span class="line"># Create Desktop Shortcuts</span><br><span class="line">$ gnome-desktop-item-edit ~&#x2F;Desktop&#x2F; --create-new</span><br></pre></td></tr></table></figure>
-
-<p>Make sure you choose the right eclipse binary and then fill in the Name and Comment.</p>
-<p><img src="/images/img/eclipse-desktop-shortcut.png" alt="GitHub Logo"></p>
-<p>Eclipse requires a JRE environment to be installed, so run below command before open Eclipse.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo apt install default-jre -y</span><br></pre></td></tr></table></figure>
-
-
-<h4 id="7-Import-Postgres-project"><a href="#7-Import-Postgres-project" class="headerlink" title="7. Import Postgres project"></a>7. Import Postgres project</h4><p>After the JRE environment has been installed successfully, double click eclipse icon from Desktop to open the IDE. From <code>Project Explorer</code>, click on <code>Import project…</code>, then fill in the information like below screenshot and then click <code>Finish</code> button.</p>
-<p><img src="/images/img/import-postgres-project.png" alt="GitHub Logo"></p>
-<p>After project importing finished, right click on the project, select <code>Build Targets</code>, then <code>Create…</code>, and fill in <code>install</code> to the Target name, then click on <code>OK</code>.</p>
-<p><img src="/images/img/create-build-target.png" alt="GitHub Logo"></p>
-<p>To build and install PostgreSQL, right click on <code>Build Target</code>, then click <code>Build…</code>, and select <code>install</code> and click on <code>Build</code>.</p>
-<p>It may take a while to compile all the source code and install the binaries, libraries, and utilities. Once finished, you should see a message from <code>Eclipse Console</code> <em>“PostgreSQL installation complete.”</em></p>
-<p>Open a Linux terminal, type below commands if PostgreSQL has been installed into the folder <code>$HOME/eclipse-workspace/postgres</code>.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ cd $HOME&#x2F;eclipse-workspace&#x2F;postgres</span><br><span class="line">$ ls -l</span><br><span class="line">total 16</span><br><span class="line">drwxrwxr-x 2 david david 4096 Dec 28 12:08 bin</span><br><span class="line">drwxrwxr-x 6 david david 4096 Dec 28 12:08 include</span><br><span class="line">drwxrwxr-x 4 david david 4096 Dec 28 12:08 lib</span><br><span class="line">drwxrwxr-x 6 david david 4096 Dec 28 12:08 share</span><br></pre></td></tr></table></figure>
-
-<h4 id="8-Configure-and-start-Postgres-server"><a href="#8-Configure-and-start-Postgres-server" class="headerlink" title="8. Configure and start Postgres server"></a>8. Configure and start Postgres server</h4><p>Now, run below commands to setup the environment variables <code>PATH</code> and <code>PGDATA</code> in the Linux terminal.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ export PATH&#x3D;$HOME&#x2F;eclipse-workspace&#x2F;postgres&#x2F;bin:$PATH</span><br><span class="line">$ mkdir -p $HOME&#x2F;pg12data&#x2F;data&#x2F;</span><br><span class="line">$ export PGDATA&#x3D;$HOME&#x2F;pg12data&#x2F;data&#x2F;</span><br></pre></td></tr></table></figure>
-
-<p>Here, we set up the path for looking up all PosgreSQL binaries, create a new folder for PosgreSQL database files and settings and then export it as an environment variable <code>PGDATA</code> to this terminal.</p>
-<p>After the environment has been setup, we need to use the same terminal to initialize the database and setup a superuser password. Notes, the database initialization needs to be done only once.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ initdb -D $HOME&#x2F;pg12data&#x2F;data&#x2F; -U postgres -W</span><br><span class="line">Enter new superuser password: postgres</span><br><span class="line">Enter it again	postgres</span><br></pre></td></tr></table></figure>
-
-<p>Now, it is time to bring up the postgres server from the terminal by using the command below.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ pg_ctl -D $HOME&#x2F;pg12data&#x2F;data&#x2F; -l logfile start</span><br><span class="line">waiting for server to start.... done</span><br><span class="line">server started</span><br></pre></td></tr></table></figure>
-
-<p>To check if all the services has started properly, run below commands,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ ps -ef |grep postgres</span><br><span class="line">david    32445     1  0 12:35 ?        00:00:00 &#x2F;home&#x2F;david&#x2F;eclipse-workspace&#x2F;postgres&#x2F;bin&#x2F;postgres -D &#x2F;home&#x2F;david&#x2F;pg12data&#x2F;data</span><br><span class="line">david    32447 32445  0 12:35 ?        00:00:00 postgres: checkpointer   </span><br><span class="line">david    32448 32445  0 12:35 ?        00:00:00 postgres: background writer   </span><br><span class="line">david    32449 32445  0 12:35 ?        00:00:00 postgres: walwriter   </span><br><span class="line">david    32450 32445  0 12:35 ?        00:00:00 postgres: autovacuum launcher   </span><br><span class="line">david    32451 32445  0 12:35 ?        00:00:00 postgres: stats collector   </span><br><span class="line">david    32452 32445  0 12:35 ?        00:00:00 postgres: logical replication launcher </span><br><span class="line">$ sudo netstat -autnlp |grep 5432</span><br><span class="line">tcp        0      0 127.0.0.1:5432          0.0.0.0:*               LISTEN      32445&#x2F;postgres</span><br></pre></td></tr></table></figure>
-<p>From the output, we can tell a posgres server with pid <code>32445</code> is listening on port <code>5432</code>, and all the other required servers are also running, such as <code>background writer</code> which issues writes of “dirty” (new or modified) shared buffers. Without any change to the default configuration, the above shows how many servers are supposed to start after issuing a <code>pg_ctl</code> start command.</p>
-<h4 id="9-Connect-a-client-to-Postgres-server"><a href="#9-Connect-a-client-to-Postgres-server" class="headerlink" title="9. Connect a client to Postgres server"></a>9. Connect a client to Postgres server</h4><p>To connect a <code>psql</code> client to the postgres server locally, you can run the command below in the same terminal.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ psql -U postgres</span><br><span class="line">psql (12.1)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line">postgres&#x3D;# \c</span><br><span class="line">You are now connected to database &quot;postgres&quot; as user &quot;postgres&quot;</span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
-
-<p>Now, if you check the postgres processes again, a new postgres server should show in the list,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ ps -ef |grep postgres</span><br><span class="line">david      721  6008  0 13:02 pts&#x2F;1    00:00:00 psql -U postgres</span><br><span class="line">david      723 32445  0 13:03 ?        00:00:00 postgres: postgres postgres [local] idle</span><br></pre></td></tr></table></figure>
-<p>Here, <code>psql</code> is the client running on the same Linux machine, and a new posgres process with pid <code>723</code> is the new server to deal with all the requests coming from the client psql with pid <code>721</code>.</p>
-<h4 id="10-Attach-postgres-to-debug-a-simple-query"><a href="#10-Attach-postgres-to-debug-a-simple-query" class="headerlink" title="10. Attach postgres to debug a simple query"></a>10. Attach postgres to debug a simple query</h4><p>Now, we are finally ready to attach this new postgres server to trace a simple query in Eclipse.<br>Right click on project <code>pgdev</code>, select <code>Debug As</code>, then select <code>Debug Configurations…</code><br>Right click on <code>C/C++ Attach Application</code>, then fill in the posgres binary path in <code>C/C++ Application</code>.</p>
-<p><img src="/images/img/attach-postgres.png" alt="GitHub Logo"></p>
-<p>After all the setting is done by referring above screenshot, click <code>Apply</code>, then click <code>Debug</code>.</p>
-<p>A Select Processes window will pop up, type <em>“postgres”</em> to show all running postgres servers, then select postgres server with pid <code>723</code> which is the one connected to the psql client. Click <code>OK</code> to launch the debugging window in Eclipse. </p>
-<p><img src="/images/img/find-postgres-server.png" alt="GitHub Logo"></p>
-<p>Well, you probably will end up with an error like below. This is caused by an Ubuntu built-in feature which doesn’t allow ptrace of a <code>non-child</code> process by any <code>non-root</code> users. </p>
-<p><img src="/images/img/pid-attach-permission-issue.png" alt="GitHub Logo"></p>
-<p>To resolve this issue, we need to temporarily disable this feature by issue a command below,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ cat &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;yama&#x2F;ptrace_scope</span><br><span class="line">1</span><br><span class="line">$ echo 0 | sudo tee &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;yama&#x2F;ptrace_scope</span><br><span class="line">[sudo] password for avid: </span><br><span class="line">0</span><br><span class="line">$ cat &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;yama&#x2F;ptrace_scope</span><br><span class="line">0</span><br></pre></td></tr></table></figure>
-<p>To permanently disable this feature, edit the file <code>/etc/sysctl.d/10-ptrace.conf</code>.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ sudo vi &#x2F;etc&#x2F;sysctl.d&#x2F;10-ptrace.conf</span><br><span class="line">kernel.yama.ptrace_scope &#x3D; 0</span><br></pre></td></tr></table></figure>
-
-<p>Once the permission issue has been fixed, relaunch the debug by attaching to running postgre server with pid <code>723</code> again, then you should see below window, press <code>F8</code> to resume this postgre process.</p>
-<p><img src="/images/img/hit-breakpoint.png" alt="GitHub Logo"></p>
-<h4 id="11-Debug-a-simple-query"><a href="#11-Debug-a-simple-query" class="headerlink" title="11. Debug a simple query"></a>11. Debug a simple query</h4><p>Now, back to the <code>psql</code> client terminal, create a table and insert a few records, and then perform a simple query on this table.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# CREATE TABLE test (id serial PRIMARY KEY, name VARCHAR(20));</span><br><span class="line">CREATE TABLE</span><br><span class="line">postgres&#x3D;# INSERT INTO test VALUES(1, &#39;test1&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line">postgres&#x3D;# INSERT INTO test VALUES(2, &#39;test2&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line">postgres&#x3D;# SELECT id, name FROM test;</span><br><span class="line"> id | name  </span><br><span class="line">----+-------</span><br><span class="line">  1 | test1</span><br><span class="line">  2 | test2</span><br><span class="line">(2 rows)</span><br></pre></td></tr></table></figure>
-
-<p>If everything works fine, then, switch back to Eclipse, to set up a <code>breakpoint</code> by entering <code>b exec_simple_query</code> in <code>Debugger Console</code>.</p>
-<p><img src="/images/img/debugger-console.png" alt="GitHub Logo"></p>
-<p>or using the search function in Eclipse to find out <code>exec_simple_query</code> function definition, i.e. line <code>985</code> in <code>./sandbox/postgres/src/backend/tcop/postgres.c</code>, and right click on the left side bar and select <code>Toggle Breakpoint</code>, then one tiny dot will be showing up to indicate the breakpoint is on.</p>
-<p><img src="/images/img/eclipse-simple-query.png" alt="GitHub Logo"></p>
-<p>Then, click on Resume button or press <code>F8</code>, or enter <code>c</code> in the <code>Debugger Console</code> to continue postgre process. When this postgres server is running again, then switch back to the <code>psql</code> client terminal and repeat the previous SELECT query command.</p>
-<p>At this time, you should see the <code>psql</code> client is hanging without any results returned.<br>Now, switch back to Eclipse. You should also see this postgres process stopped in <code>exec_simple_query</code> function. If you enter <code>bt</code> in <code>Debugger Console</code>, then you should be able to see the backtrace below highlighted.</p>
-<p><img src="/images/img/debugger-console-bt.png" alt="GitHub Logo"></p>
-<p>To check any function and value in the backtrace, for example, frame 5 PostmasterMain, type <code>f 5</code> in <code>Debugger Console</code> and then <code>Enter</code>. Eclipse will navigate you to the function immediately and highlight it. From there you can use <code>Ctrl + left click</code> to jump into the function definition and check the details. </p>
-<p>Image-11<br><img src="/images/img/eclipse-frame-5.png" alt="GitHub Logo"></p>
-<p>After finishing all the check, then resume the postgres process, and then switch to the <code>psql</code> client terminal, you should see the results is returned.</p>
-<p><em>Enjoy your debugging with Eclipse for PostgreSQL.</em></p>
-<p><em><strong>Reference:</strong></em> </p>
-<p><a href="https://www.highgo.ca/2019/10/08/newbie-to-postgresql-where-to-start" target="_blank" rel="noopener">1. Newbie to PostgreSQL – where to start</a> </p>
-<p><a href="https://www.highgo.ca/2019/10/03/trace-query-processing-internals-with-debugger" target="_blank" rel="noopener">2. Trace Query Processing Internals with Debugger</a> </p>
-<p><a href="https://wiki.postgresql.org/wiki/Working_with_Eclipse" target="_blank" rel="noopener">3. Working with Eclipse</a></p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
+  <nav class="pagination">
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="Next page"></i></a>
+  </nav>
 
 
 
@@ -1853,12 +1796,12 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">10</span>
+          <span class="site-state-item-count">11</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-count">29</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

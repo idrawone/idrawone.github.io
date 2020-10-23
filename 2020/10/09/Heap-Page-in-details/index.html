@@ -56,7 +56,7 @@
 <meta property="og:image" content="https://idrawone.github.io/images/img/fi-heap-page.png">
 <meta property="og:image" content="https://idrawone.github.io/images/img/tuple.png">
 <meta property="article:published_time" content="2020-10-09T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-10-09T23:10:23.629Z">
+<meta property="article:modified_time" content="2020-10-09T23:47:06.359Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-heap-page.png">
@@ -150,7 +150,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">10</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">11</span></a>
 
   </li>
   </ul>
@@ -203,7 +203,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-10-09 01:00:00 / Modified: 16:10:23" itemprop="dateCreated datePublished" datetime="2020-10-09T01:00:00-07:00">2020-10-09</time>
+              <time title="Created: 2020-10-09 01:00:00 / Modified: 16:47:06" itemprop="dateCreated datePublished" datetime="2020-10-09T01:00:00-07:00">2020-10-09</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -337,7 +337,7 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
 </ul>
 <p>This extension provides an easy way to observe how a heap page is changed when performing insert, delete and vacuum. The same behaviour can be observed on the heap file when using hexdump command (<code>checkpoint</code> may require to force the memory page to be flushed to heap file after each operation).</p>
 <h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6.    Summary"></a>6.    Summary</h4><p>We explained how the heap files are created, the internal data structure of heap file and page (a segment of a heap file), and demonstrated how to use the extension <code>pageinspect</code> to check what happens when user performed some insert, delete and vacuum. In the coming blogs, I will explain the free space mapping file and the visibility mapping file in the same way.</p>
-<p>Ref: [PG Database File Layout] (<a href="https://www.postgresql.org/docs/current/storage-file-layout.html" target="_blank" rel="noopener">https://www.postgresql.org/docs/current/storage-file-layout.html</a>)</p>
+<p>Ref: <a href="https://www.postgresql.org/docs/current/storage-file-layout.html" target="_blank" rel="noopener">PG Database File Layout</a></p>
 
     </div>
 
@@ -356,7 +356,10 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
     <a href="/2020/08/21/How-to-setup-Postgresql-on-an-IPv6-enabled-network/" rel="prev" title="How to setup Postgresql on an IPv6 enabled network">
       <i class="fa fa-chevron-left"></i> How to setup Postgresql on an IPv6 enabled network
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/10/23/Heap-freespace-in-details/" rel="next" title="Heap free space in details">
+      Heap free space in details <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -432,12 +435,12 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">10</span>
+          <span class="site-state-item-count">11</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-count">29</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

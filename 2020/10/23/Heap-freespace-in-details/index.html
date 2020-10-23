@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewPreviously, we discussed the MAIN fork file and corresponding extension Heap file and page in details. This blog will explain a little bit more about the Free Space File and corresponding">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Heap free space in details">
+<meta property="og:url" content="https://idrawone.github.io/2020/10/23/Heap-freespace-in-details/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewPreviously, we discussed the MAIN fork file and corresponding extension Heap file and page in details. This blog will explain a little bit more about the Free Space File and corresponding">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-heap-page.png">
+<meta property="article:published_time" content="2020-10-23T08:00:00.000Z">
+<meta property="article:modified_time" content="2020-10-23T22:01:41.207Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-heap-page.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2020/10/23/Heap-freespace-in-details/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Heap free space in details | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">11</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/10/23/Heap-freespace-in-details/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Heap free space in details
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-10-23 01:00:00 / Modified: 15:01:41" itemprop="dateCreated datePublished" datetime="2020-10-23T01:00:00-07:00">2020-10-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/" itemprop="url" rel="index">
+                    <span itemprop="name">Heap</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/Page/" itemprop="url" rel="index">
+                    <span itemprop="name">Page</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/Page/Extension/" itemprop="url" rel="index">
+                    <span itemprop="name">Extension</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Heap/Page/Extension/Freespace/" itemprop="url" rel="index">
+                    <span itemprop="name">Freespace</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi-heap-page.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Previously, we discussed the <code>MAIN</code> fork file and corresponding extension <a href="https://www.highgo.ca/2020/10/09/heap-file-and-page-in-details" target="_blank" rel="noopener">Heap file and page in details</a>. This blog will explain a little bit more about the Free Space File and corresponding extension.</p>
+<h4 id="2-What-is-a-Free-Space-Mapping-file"><a href="#2-What-is-a-Free-Space-Mapping-file" class="headerlink" title="2. What is a Free Space Mapping file"></a>2. What is a Free Space Mapping file</h4><p>A Free Space Mapping, FSM, file is a file that keeps tracking the availability of free space inside a page. The FSM file is used to quickly locate a page with enough<br>free space to hold a record to be stored during insertion, and it will be updated during an insertion or a vacuum on the table.</p>
+<p>Start from PostgreSQL 8.4 each relation has its own extensible FSM files stored on disk. The FSM file is stored under its relation folder. From previous example, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create table orders1 (id int4, test text) using heap;</span><br><span class="line">postgres&#x3D;# insert into orders1 values(1, &#39;hello world!&#39;);</span><br></pre></td></tr></table></figure>
+<p>You will see the heap files under the database folder like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ ls -ltrh &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384*</span><br><span class="line">-rw------- 1 user user  24K Oct  8 14:33 &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384_fsm</span><br><span class="line">-rw------- 1 user user 8.0K Oct  8 14:34 &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384_vm</span><br><span class="line">-rw------- 1 user user 512K Oct  8 14:34 &#x2F;home&#x2F;user&#x2F;pgdata&#x2F;base&#x2F;12705&#x2F;16384</span><br></pre></td></tr></table></figure>
+<p>Where <code>16384</code> is the table orders1’s oid, and <code>16384_fsm</code> is the corresponding <code>Free Space Mapping</code> file.</p>
+<h4 id="3-How-the-Free-Space-Mapping-files-are-managed"><a href="#3-How-the-Free-Space-Mapping-files-are-managed" class="headerlink" title="3. How the Free Space Mapping files are managed"></a>3. How the Free Space Mapping files are managed</h4><p>Before PostgreSQL 8.4, the FSM is maintained in memory with the limitation of fixed-size. Now, all FSM files are on disk and can be extended in the same way as heap segmentation files. The FSM files will be updated during an insertion and a Vacuum process either periodically or triggered manually. In some conditions, the FSM may need to be rebuilt, for example, if a leaf node’s value is less than the root node or if there is truncate operation.</p>
+<p>FSM file is mainly used to quickly locate a page for insert operation and in the meantime it helps to speed up the insertion by trying to inert records in existing pages instead of extend a new page. By doing this, it not only help speed up the insertion but also help improve the selection performance. Moreover, the user to implement various strategies, like preferring pages closer to a given page, or spreading the load across the table. </p>
+<h4 id="4-What-is-inside-in-an-FSM-page"><a href="#4-What-is-inside-in-an-FSM-page" class="headerlink" title="4. What is inside in an FSM page"></a>4. What is inside in an FSM page</h4><p>Inside the FSM page, there are two binary tree structure are used: low-level binary tree is used to record the amount of free space on each heap page; high-level binary tree is used scale up the low-level data structure. For details, please reference the <a href="https://github.com/postgres/postgres/blob/master/src/backend/storage/freespace/README" target="_blank" rel="noopener">README</a>.</p>
+<h4 id="5-The-extension-for-FSM"><a href="#5-The-extension-for-FSM" class="headerlink" title="5. The extension for FSM"></a>5. The extension for FSM</h4><p>The <code>pg_freespacemap</code> extension provides the functions that allow you to inspect the free space in each page for a given relation/table. So far, there is only one function provide in <code>pg_freespacemap</code>, i.e. <code>pg_freespace</code>. This function can be used retrieve the amount of free space on each page by giving different parameters. To use this extension, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create extension pg_freespacemap;</span><br><span class="line">CREATE EXTENSION</span><br><span class="line">postgres&#x3D;# create table orders1 (id int4, test text);</span><br><span class="line">CREATE TABLE</span><br><span class="line">postgres&#x3D;# insert into orders1 values(generate_series(1,1000), &#39;hello world!&#39;);</span><br><span class="line">INSERT 0 1000</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>retrieve free space for all pages <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# vacuum orders1;</span><br><span class="line">VACUUM</span><br><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;);</span><br><span class="line"> blkno | avail </span><br><span class="line">-------+-------</span><br><span class="line">     0 |     0</span><br><span class="line">     1 |     0</span><br><span class="line">     2 |     0</span><br><span class="line">     3 |     0</span><br><span class="line">     4 |     0</span><br><span class="line">     5 |     0</span><br><span class="line">     6 |  5120</span><br><span class="line">(7 rows)</span><br></pre></td></tr></table></figure>
+From the above results, it tells that the first 5 pages are all full, only the last page, page6, has some free space are available. </li>
+</ul>
+<p>Let’s delete different number of records in each page, and then check free space again to what is happening inside.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# delete from orders1 where id%2&#x3D;1 and id &lt; 158;</span><br><span class="line">DELETE 79</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%4&#x3D;1 and id &gt;&#x3D; 158 and id &lt; 315;</span><br><span class="line">DELETE 39</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%8&#x3D;1 and id &gt;&#x3D; 315 and id &lt; 472;</span><br><span class="line">DELETE 19</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%16&#x3D;1 and id &gt;&#x3D; 472 and id &lt; 629;</span><br><span class="line">DELETE 10</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%32&#x3D;1 and id &gt;&#x3D; 629 and id &lt; 786;</span><br><span class="line">DELETE 5</span><br><span class="line">postgres&#x3D;# delete from orders1 where id%64&#x3D;1 and id &gt;&#x3D; 786;</span><br><span class="line">DELETE 3</span><br><span class="line">postgres&#x3D;# vacuum orders1;</span><br><span class="line">VACUUM</span><br><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;);</span><br><span class="line"> blkno | avail </span><br><span class="line">-------+-------</span><br><span class="line">     0 |  3776</span><br><span class="line">     1 |  1856</span><br><span class="line">     2 |   896</span><br><span class="line">     3 |   480</span><br><span class="line">     4 |   224</span><br><span class="line">     5 |    96</span><br><span class="line">     6 |  5184</span><br><span class="line">(7 rows)</span><br></pre></td></tr></table></figure>
+<p>Now, we see can the amount of free space is different and it depends on how many records has been deleted.</p>
+<ul>
+<li><p>retrieve free space for a specific page<br>The <code>pg_freespace</code> also allow you to check the amount of free space available in a specified page, for example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;, 3);</span><br><span class="line"> pg_freespace </span><br><span class="line">--------------</span><br><span class="line">          480</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>insert using free space<br>From the above delete examples, we know how many records deleted in each page, in other words, the maximum records can fit in for each page. Let’s perform some insertion test.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# insert into orders1 values(generate_series(1,65), &#39;hello world!&#39;);</span><br><span class="line">INSERT 0 65</span><br><span class="line">postgres&#x3D;# vacuum orders1;</span><br><span class="line">VACUUM</span><br><span class="line">postgres&#x3D;# SELECT * FROM pg_freespace(&#39;orders1&#39;);</span><br><span class="line"> blkno | avail </span><br><span class="line">-------+-------</span><br><span class="line">     0 |   672</span><br><span class="line">     1 |  1856</span><br><span class="line">     2 |   896</span><br><span class="line">     3 |   480</span><br><span class="line">     4 |   224</span><br><span class="line">     5 |    96</span><br><span class="line">     6 |  5184</span><br><span class="line">(7 rows)</span><br></pre></td></tr></table></figure>
+<p>From the results above, we can see the records was inserted to the first page, instead of allocating a new page.</p>
+</li>
+</ul>
+<h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6.    Summary"></a>6.    Summary</h4><p>We explained why there is a free space mapping file under corresponding relation folder, how the free space mapping files are managed, and demonstrated how to use the extension <code>pg_freespacemap</code> to check what happens when user performed some insert, delete and vacuum. In next blog, I will explain the visibility mapping files.</p>
+<p>Ref: <a href="https://www.postgresql.org/docs/current/storage-file-layout.html" target="_blank" rel="noopener">PG Database File Layout</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/10/09/Heap-Page-in-details/" rel="prev" title="Heap file and page in details">
+      <i class="fa fa-chevron-left"></i> Heap file and page in details
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-What-is-a-Free-Space-Mapping-file"><span class="nav-number">2.</span> <span class="nav-text">2. What is a Free Space Mapping file</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-How-the-Free-Space-Mapping-files-are-managed"><span class="nav-number">3.</span> <span class="nav-text">3. How the Free Space Mapping files are managed</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-What-is-inside-in-an-FSM-page"><span class="nav-number">4.</span> <span class="nav-text">4. What is inside in an FSM page</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-The-extension-for-FSM"><span class="nav-number">5.</span> <span class="nav-text">5. The extension for FSM</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-Summary"><span class="nav-number">6.</span> <span class="nav-text">6.    Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">11</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
