@@ -46,16 +46,16 @@
   };
 </script>
 
-  <meta name="description" content="1. OverviewPreviously, we discussed the MAIN fork file and corresponding extension Heap file and page in details. This blog will explain a little bit more about the Free Space File and corresponding">
+  <meta name="description" content="1. OverviewPreviously, we discussed the MAIN fork file and corresponding extension at Heap file and page in details. This blog will explain a little bit more about the Free Space Mapping file and cor">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Free Space Mapping file in details">
 <meta property="og:url" content="https://idrawone.github.io/2020/10/23/Heap-freespace-in-details/index.html">
 <meta property="og:site_name" content="David&#39;s Blog">
-<meta property="og:description" content="1. OverviewPreviously, we discussed the MAIN fork file and corresponding extension Heap file and page in details. This blog will explain a little bit more about the Free Space File and corresponding">
+<meta property="og:description" content="1. OverviewPreviously, we discussed the MAIN fork file and corresponding extension at Heap file and page in details. This blog will explain a little bit more about the Free Space Mapping file and cor">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://idrawone.github.io/images/img/fi-heap-page.png">
 <meta property="article:published_time" content="2020-10-23T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-10-23T22:06:34.265Z">
+<meta property="article:modified_time" content="2020-10-23T22:08:42.902Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-heap-page.png">
@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-10-23 01:00:00 / Modified: 15:06:34" itemprop="dateCreated datePublished" datetime="2020-10-23T01:00:00-07:00">2020-10-23</time>
+              <time title="Created: 2020-10-23 01:00:00 / Modified: 15:08:42" itemprop="dateCreated datePublished" datetime="2020-10-23T01:00:00-07:00">2020-10-23</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -252,7 +252,7 @@
 
       
         <p><img src="/images/img/fi-heap-page.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Previously, we discussed the <code>MAIN</code> fork file and corresponding extension <a href="https://www.highgo.ca/2020/10/09/heap-file-and-page-in-details" target="_blank" rel="noopener">Heap file and page in details</a>. This blog will explain a little bit more about the Free Space File and corresponding extension.</p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Previously, we discussed the <code>MAIN</code> fork file and corresponding extension at <a href="https://www.highgo.ca/2020/10/09/heap-file-and-page-in-details" target="_blank" rel="noopener">Heap file and page in details</a>. This blog will explain a little bit more about the Free Space Mapping file and corresponding extension.</p>
 <h4 id="2-What-is-a-Free-Space-Mapping-file"><a href="#2-What-is-a-Free-Space-Mapping-file" class="headerlink" title="2. What is a Free Space Mapping file"></a>2. What is a Free Space Mapping file</h4><p>A Free Space Mapping, FSM, file is a file that keeps tracking the availability of free space inside a page. The FSM file is used to quickly locate a page with enough<br>free space to hold a record to be stored during insertion, and it will be updated during an insertion or a vacuum on the table.</p>
 <p>Start from PostgreSQL 8.4 each relation has its own extensible FSM files stored on disk. The FSM file is stored under its relation folder. From previous example, </p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create table orders1 (id int4, test text) using heap;</span><br><span class="line">postgres&#x3D;# insert into orders1 values(1, &#39;hello world!&#39;);</span><br></pre></td></tr></table></figure>
