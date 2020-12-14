@@ -53,12 +53,12 @@
 <meta property="og:site_name" content="David&#39;s Blog">
 <meta property="og:description" content="1. OverviewPostgreSQL is a great open source database developed and maintained by many great software engineers around the world. In each release, there are many features added to this open source da">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://idrawone.github.io/images/img/fi-gdb-step-mult.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-gdb-backtrace.png">
 <meta property="article:published_time" content="2020-12-14T08:00:00.000Z">
-<meta property="article:modified_time" content="2020-12-14T23:11:54.163Z">
+<meta property="article:modified_time" content="2020-12-14T23:57:03.745Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-gdb-step-mult.png">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-gdb-backtrace.png">
 
 <link rel="canonical" href="https://idrawone.github.io/2020/12/14/how-to-dump-a-backtrace-at-runtime/">
 
@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-12-14 00:00:00 / Modified: 15:11:54" itemprop="dateCreated datePublished" datetime="2020-12-14T00:00:00-08:00">2020-12-14</time>
+              <time title="Created: 2020-12-14 00:00:00 / Modified: 15:57:03" itemprop="dateCreated datePublished" datetime="2020-12-14T00:00:00-08:00">2020-12-14</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -239,7 +239,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p><img src="/images/img/fi-gdb-step-mult.png" alt="Featured image"></p>
+        <p><img src="/images/img/fi-gdb-backtrace.png" alt="Featured image"></p>
 <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is a great open source database developed and maintained by many great software engineers around the world. In each release, there are many features added to this open source database. For example, one feature is very helpful for developer is <code>backtrace_functions</code> introduced in <a href="https://www.postgresql.org/docs/release/13.0/" target="_blank" rel="noopener">PostgreSQL 13</a> , which allows a developer to dump out the <code>backtrace</code> when certain errors happened on the server. In this blog, I am going to explain it in a little bit more detail.</p>
 <h4 id="2-What-is-backtrace-functions"><a href="#2-What-is-backtrace-functions" class="headerlink" title="2. What is backtrace_functions?"></a>2. What is <code>backtrace_functions</code>?</h4><p>The <code>backtrace_functions</code> option is an option introduced for developers as it is described <a href="https://www.postgresql.org/docs/13/runtime-config-developer.html" target="_blank" rel="noopener">here</a>. You can specify a list of c function names separated by comma, if an error is raised and matches any c function in the given list, then the backtrace will be logged into the logfile. This is very useful for debugging some specific areas of the source code, especially when the error happens randomly. As the document also mentioned, this option is not available on all platforms, and quality of the backtraces depends on the compilation options. For this reason, all the examples used in this blog were tested on Ubuntu 18.04 with gcc version 7.5.0.</p>
 <h4 id="3-How-to-make-it-work"><a href="#3-How-to-make-it-work" class="headerlink" title="3. How to make it work?"></a>3. How to make it work?</h4><p>This feature was first committed in Nov, 2019 as showing below.</p>
@@ -264,7 +264,7 @@
 <p>Let’s run the command <code>addr2line</code> with the new hex address string again,</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ addr2line 0x52c2b5 -f -e &#96;which postgres&#96;</span><br><span class="line">exec_simple_query</span><br><span class="line">&#x2F;home&#x2F;david&#x2F;postgres&#x2F;src&#x2F;backend&#x2F;tcop&#x2F;postgres.c:1155</span><br></pre></td></tr></table></figure>
 <p>Now, we get the function name, file name and the line number.</p>
-<h4 id="3-Summary"><a href="#3-Summary" class="headerlink" title="3. Summary"></a>3. Summary</h4><p>This blog simply discussed one very useful option introduced to PostgreSQL 13 for developers. I use this option a lot during my daily development work, and it helps me quickly locate the errors. I also use this feature when someone reports an error which happens randomly. To debug such issue, I simply enable it with the c function names. When the error happens again, then I can get the exactly backtrace. The <code>backtrace_functions</code> does make my work much easier when tracing a bug.</p>
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>This blog simply discussed one very useful option introduced to PostgreSQL 13 for developers. I use this option a lot during my daily development work, and it helps me quickly locate the errors. I also use this feature when someone reports an error which happens randomly. To debug such issue, I simply enable it with the c function names. When the error happens again, then I can get the exactly backtrace. The <code>backtrace_functions</code> does make my work much easier when tracing a bug.</p>
 <p><em><strong>Reference:</strong></em> </p>
 <p><a href="https://amitdkhan-pg.blogspot.com/2020/07/backtraces-in-postgresql.html" target="_blank" rel="noopener">1. Database World</a> </p>
 
@@ -345,7 +345,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-What-is-backtrace-functions"><span class="nav-number">2.</span> <span class="nav-text">2. What is backtrace_functions?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-How-to-make-it-work"><span class="nav-number">3.</span> <span class="nav-text">3. How to make it work?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Summary"><span class="nav-number">4.</span> <span class="nav-text">3. Summary</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-What-is-backtrace-functions"><span class="nav-number">2.</span> <span class="nav-text">2. What is backtrace_functions?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-How-to-make-it-work"><span class="nav-number">3.</span> <span class="nav-text">3. How to make it work?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Summary"><span class="nav-number">4.</span> <span class="nav-text">4. Summary</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
