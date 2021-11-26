@@ -4,7 +4,7 @@
   
     
     <entry>
-      <title>Backup Label in PostgreSQL</title>
+      <title>How to run a specific regression test</title>
       <link href="/2021/11/26/how-to-run-a-specific-regression-test/"/>
       <url>/2021/11/26/how-to-run-a-specific-regression-test/</url>
       
@@ -15,9 +15,7 @@
           
           <category> PostgreSQL </category>
           
-          <category> regression </category>
-          
-          <category> specific </category>
+          <category> regression TAP </category>
           
           <category> test </category>
           
