@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://idrawone.github.io/2021/11/26/how-to-run-a-specific-regression-test/</loc>
+    <lastmod>2021-11-26</lastmod>
+  </url>  <url>
+    <loc>https://idrawone.github.io/2021/10/15/what-is-backup-label/</loc>
+    <lastmod>2021-10-15</lastmod>
+  </url>  <url>
+    <loc>https://idrawone.github.io/2021/09/17/a-quick-test-for-postgres-fdw-batch-insertion/</loc>
+    <lastmod>2021-09-17</lastmod>
+  </url>  <url>
+    <loc>https://idrawone.github.io/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/</loc>
+    <lastmod>2021-08-20</lastmod>
+  </url>  <url>
+    <loc>https://idrawone.github.io/2021/07/23/the-amazing-buffer-tag-in-PG/</loc>
+    <lastmod>2021-07-23</lastmod>
+  </url>  <url>
     <loc>https://idrawone.github.io/2021/03/03/how-to-create-a-system-info-function/</loc>
     <lastmod>2021-03-03</lastmod>
   </url>  <url>

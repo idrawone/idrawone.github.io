@@ -53,12 +53,12 @@
 <meta property="og:site_name" content="David&#39;s Blog">
 <meta property="og:description" content="1. OverviewPostgreSQL supports many System Information Functions, such as Session Information Functions, Access Privilege Inquiry Functions, Schema Visibility Inquiry Functions, System Catalog Inform">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://idrawone.github.io/images/img/ffi_sys_info_fun.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi_sys_info_fun.png">
 <meta property="article:published_time" content="2021-03-03T08:00:00.000Z">
-<meta property="article:modified_time" content="2021-03-03T23:17:07.622Z">
+<meta property="article:modified_time" content="2021-03-03T23:19:02.846Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://idrawone.github.io/images/img/ffi_sys_info_fun.png">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi_sys_info_fun.png">
 
 <link rel="canonical" href="https://idrawone.github.io/2021/03/03/how-to-create-a-system-info-function/">
 
@@ -149,7 +149,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">14</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">19</span></a>
 
   </li>
   </ul>
@@ -202,7 +202,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2021-03-03 00:00:00 / Modified: 15:17:07" itemprop="dateCreated datePublished" datetime="2021-03-03T00:00:00-08:00">2021-03-03</time>
+              <time title="Created: 2021-03-03 00:00:00 / Modified: 15:19:02" itemprop="dateCreated datePublished" datetime="2021-03-03T00:00:00-08:00">2021-03-03</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -245,7 +245,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p><img src="/images/img/ffi_sys_info_fun.png" alt="Featured image"></p>
+        <p><img src="/images/img/fi_sys_info_fun.png" alt="Featured image"></p>
 <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL supports many System Information Functions, such as Session Information Functions, Access Privilege Inquiry Functions, Schema Visibility Inquiry Functions, System Catalog Information Functions, Transaction ID and Snapshot Information Functions, etc. However, you may want build some special functions and integrate them into the PostgreSQL. This blog is going to walk through the steps about how to build your own System Information Functions into PostgreSQL.</p>
 <h4 id="2-Analyze-the-requirement"><a href="#2-Analyze-the-requirement" class="headerlink" title="2. Analyze the requirement"></a>2. Analyze the requirement</h4><p>Since there are so many functions built-in PostgreSQL already, you should perform some research and analysis before you decide to create a new one. In this blog, I want to check the transaction id after each savepoints in an ongoing transaction, so that I can perform some visibility check before the whole transaction is committed. For example, I have a query like below, but I can’t figure out the transaction id after each savepoint if I use existing System Information Function .</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# CREATE TABLE tbl (data text);</span><br><span class="line">CREATE TABLE</span><br><span class="line">postgres&#x3D;# BEGIN;</span><br><span class="line">BEGIN</span><br><span class="line">postgres&#x3D;# INSERT INTO tbl VALUES(&#39;HelloWorld-1&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line">postgres&#x3D;# SELECT txid_current();</span><br><span class="line"> txid_current </span><br><span class="line">--------------</span><br><span class="line">          488</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SAVEPOINT AA;</span><br><span class="line">SAVEPOINT</span><br><span class="line">postgres&#x3D;# INSERT INTO tbl VALUES(&#39;HelloWorld-2&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT txid_current();</span><br><span class="line"> txid_current </span><br><span class="line">--------------</span><br><span class="line">          488</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
@@ -286,7 +286,10 @@
     <a href="/2021/02/03/how-to-setup-wal-streaming-replication-for-postgresql13/" rel="prev" title="How to setup Postgres 13 WAL streaming replication on Ubuntu 18.04">
       <i class="fa fa-chevron-left"></i> How to setup Postgres 13 WAL streaming replication on Ubuntu 18.04
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2021/07/23/the-amazing-buffer-tag-in-PG/" rel="next" title="The Amazing Buffer Tag in PostgreSQL">
+      The Amazing Buffer Tag in PostgreSQL <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -362,12 +365,12 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-count">19</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-count">50</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

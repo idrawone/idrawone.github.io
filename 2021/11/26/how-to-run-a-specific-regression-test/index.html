@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewI have been working on an internal project based on PostgreSQL for a while. Here, I want to shared a tip to run a specific regression TAP test quickly, especially, when you are focusing on">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Backup Label in PostgreSQL">
+<meta property="og:url" content="https://idrawone.github.io/2021/11/26/how-to-run-a-specific-regression-test/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewI have been working on an internal project based on PostgreSQL for a while. Here, I want to shared a tip to run a specific regression TAP test quickly, especially, when you are focusing on">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-backup-label.png">
+<meta property="article:published_time" content="2021-11-26T08:00:00.000Z">
+<meta property="article:modified_time" content="2021-11-26T23:51:13.503Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-backup-label.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2021/11/26/how-to-run-a-specific-regression-test/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Backup Label in PostgreSQL | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">19</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/11/26/how-to-run-a-specific-regression-test/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Backup Label in PostgreSQL
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-11-26 00:00:00 / Modified: 15:51:13" itemprop="dateCreated datePublished" datetime="2021-11-26T00:00:00-08:00">2021-11-26</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/regression/" itemprop="url" rel="index">
+                    <span itemprop="name">regression</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/regression/specific/" itemprop="url" rel="index">
+                    <span itemprop="name">specific</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/regression/specific/test/" itemprop="url" rel="index">
+                    <span itemprop="name">test</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi-backup-label.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>I have been working on an internal project based on PostgreSQL for a while. Here, I want to shared a tip to run a specific regression TAP test quickly, especially, when you are focusing on a particular bug and you know which test case can help verify the fix. A details document about the regression test can found at PostgreSQL official website at <a href="https://www.postgresql.org/docs/14/regress-run.html" target="_blank" rel="noopener">Running the Tests</a>.</p>
+<h4 id="2-Regression-test"><a href="#2-Regression-test" class="headerlink" title="2. Regression test"></a>2. Regression test</h4><p>PostgreSQL provides a comprehensive set of regression tests to verify the SQL implementation embedded in PostgreSQL as well as the extended capabilities of PostgreSQL. Whenever you make some changes, you should run these existing test cases to make sure the change doesn’t break any existing features. Other than these test regression tests, there are some special features using a test framework call TAP test. For example, kerberos, ssl, recovery etc.</p>
+<p>If you want to run these tests, you have to make sure the option <code>--enable-tap-tests</code> has been configured. for example,<br><code>./configure --prefix=$HOME/pgapp --enable-tap-tests --enable-debug CFLAGS=&quot;-g3 -O0 -fno-omit-frame-pointer&quot;</code></p>
+<p>You can run the TAP test either <code>make check</code> or <code>make installcheck</code>, but compared with thsoe non-TAP tests, the different is that these TAP test will always start a test server even you run <code>make installcheck</code>. Because of this different, some tests may take a longer time than you expected, and even worse, some test cases may cause the enrie test failed in the middle, and your test cases may not get the chance to run. For example, I changed somethings related to the recovery features, and it suppose to be tested by test cases <code>021_row_visibility.pl</code> and <code>025_stuck_on_old_timeline.pl</code>, but whenever you run <code>make check</code> or <code>make installcheck</code>, you end up with something like below.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">t&#x2F;001_stream_rep.pl .................. ok     </span><br><span class="line">t&#x2F;002_archiving.pl ................... ok   </span><br><span class="line">t&#x2F;003_recovery_targets.pl ............ ok   </span><br><span class="line">t&#x2F;004_timeline_switch.pl ............. ok   </span><br><span class="line">t&#x2F;005_replay_delay.pl ................ ok   </span><br><span class="line">t&#x2F;006_logical_decoding.pl ............ ok     </span><br><span class="line">t&#x2F;007_sync_rep.pl .................... ok     </span><br><span class="line">t&#x2F;008_fsm_truncation.pl .............. ok   </span><br><span class="line">t&#x2F;009_twophase.pl .................... ok     </span><br><span class="line">t&#x2F;010_logical_decoding_timelines.pl .. ok     </span><br><span class="line">t&#x2F;011_crash_recovery.pl .............. ok   </span><br><span class="line">t&#x2F;012_subtransactions.pl ............. ok     </span><br><span class="line">t&#x2F;013_crash_restart.pl ............... ok     </span><br><span class="line">t&#x2F;014_unlogged_reinit.pl ............. ok     </span><br><span class="line">t&#x2F;015_promotion_pages.pl ............. ok   </span><br><span class="line">t&#x2F;016_min_consistency.pl ............. ok   </span><br><span class="line">t&#x2F;017_shm.pl ......................... ok   </span><br><span class="line">t&#x2F;018_wal_optimize.pl ................ ok     </span><br><span class="line">t&#x2F;019_replslot_limit.pl .............. 11&#x2F;20 Bailout called.  Further testing stopped:  pg_ctl start failed</span><br><span class="line">FAILED--Further testing stopped: pg_ctl start failed</span><br><span class="line">Makefile:23: recipe for target &#39;check&#39; failed</span><br><span class="line">make: *** [check] Error 255</span><br></pre></td></tr></table></figure>
+<p>Now, <code>019_replslot_limit.pl</code> always failed in the middle, but those test cases to verify your changes haven’t got the chance to run yet.</p>
+<h4 id="3-How-to-run-a-specific-test"><a href="#3-How-to-run-a-specific-test" class="headerlink" title="3. How to run a specific test?"></a>3. How to run a specific test?</h4><p>The key is to use a variable <code>PROVE_TESTS</code> provided by PostgreSQL. Details can be found at <a href="https://www.postgresql.org/docs/14/regress-tap.html" target="_blank" rel="noopener">TAP Tests</a>. This <code>PROVE_TESTS</code> variable allow to define a whitespace separated list of paths to run the specified subset of tests instead of the default t/*.pl. For example: in above case, you can run <code>make check PROVE_TESTS=&#39;t/021_row_visibility.pl t/025_stuck_on_old_timeline.pl&#39;</code>. It will run these two test cases directly. The output is something like below.</p>
+<p>recovery$ make check PROVE_TESTS=’t/021_row_visibility.pl t/025_stuck_on_old_timeline.pl’<br>make -C ../../../src/backend generated-headers<br>make[1]: Entering directory ‘/home/sandbox/sharedsm/src/backend’<br>make -C catalog distprep generated-header-symlinks<br>make[2]: Entering directory ‘/home/sandbox/sharedsm/src/backend/catalog’<br>make[2]: Nothing to be done for ‘distprep’.<br>make[2]: Nothing to be done for ‘generated-header-symlinks’.<br>make[2]: Leaving directory ‘/home/sandbox/sharedsm/src/backend/catalog’<br>make -C utils distprep generated-header-symlinks<br>make[2]: Entering directory ‘/home/sandbox/sharedsm/src/backend/utils’<br>make[2]: Nothing to be done for ‘distprep’.<br>make[2]: Nothing to be done for ‘generated-header-symlinks’.<br>make[2]: Leaving directory ‘/home/sandbox/sharedsm/src/backend/utils’<br>make[1]: Leaving directory ‘/home/sandbox/sharedsm/src/backend’<br>rm -rf ‘/home/sandbox/sharedsm’/tmp_install<br>/bin/mkdir -p ‘/home/sandbox/sharedsm’/tmp_install/log<br>make -C ‘../../..’ DESTDIR=’/home/sandbox/sharedsm’/tmp_install install &gt;’/home/sandbox/sharedsm’/tmp_install/log/install.log 2&gt;&amp;1<br>make -j1  checkprep &gt;&gt;’/home/sandbox/sharedsm’/tmp_install/log/install.log 2&gt;&amp;1<br>rm -rf ‘/home/sandbox/sharedsm/src/test/recovery’/tmp_check<br>/bin/mkdir -p ‘/home/sandbox/sharedsm/src/test/recovery’/tmp_check<br>cd . &amp;&amp; TESTDIR=’/home/sandbox/sharedsm/src/test/recovery’ PATH=”/home/sandbox/sharedsm/tmp_install/home/sandbox/pgapp/bin:$PATH” LD_LIBRARY_PATH=”/home/sandbox/sharedsm/tmp_install/home/sandbox/pgapp/lib:$LD_LIBRARY_PATH”  PGPORT=’65432’ PG_REGRESS=’/home/sandbox/sharedsm/src/test/recovery/../../../src/test/regress/pg_regress’ /usr/bin/prove -I ../../../src/test/perl/ -I .  t/021_row_visibility.pl t/025_stuck_on_old_timeline.pl<br>t/021_row_visibility.pl ……… ok<br>t/025_stuck_on_old_timeline.pl .. ok<br>All tests successful.<br>Files=2, Tests=11, 13 wallclock secs ( 0.01 usr  0.00 sys +  1.73 cusr  4.03 csys =  5.77 CPU)<br>Result: PASS</p>
+<p>Of course, if you know the makefile very well, you can also do it on your own way. For example, by looking at the output, you can simple do in below steps to achieve the same results.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">rm -rf &#39;&#x2F;home&#x2F;sandbox&#x2F;sharedsm&#x2F;src&#x2F;test&#x2F;recovery&#39;&#x2F;tmp_check</span><br><span class="line"></span><br><span class="line">mkdir -p &#39;&#x2F;home&#x2F;sandbox&#x2F;sharedsm&#x2F;src&#x2F;test&#x2F;recovery&#39;&#x2F;tmp_check</span><br><span class="line"></span><br><span class="line">recovery$ cd . &amp;&amp; TESTDIR&#x3D;&#39;&#x2F;home&#x2F;sandbox&#x2F;sharedsm&#x2F;src&#x2F;test&#x2F;recovery&#39; PATH&#x3D;&quot;&#x2F;home&#x2F;sandbox&#x2F;pgapp&#x2F;bin:$PATH&quot; PGPORT&#x3D;&#39;65432&#39; top_builddir&#x3D;&#39;&#x2F;home&#x2F;sandbox&#x2F;sharedsm&#x2F;src&#x2F;test&#x2F;recovery&#x2F;..&#x2F;..&#x2F;..&#39; PG_REGRESS&#x3D;&#39;&#x2F;home&#x2F;sandbox&#x2F;sharedsm&#x2F;src&#x2F;test&#x2F;recovery&#x2F;..&#x2F;..&#x2F;..&#x2F;src&#x2F;test&#x2F;regress&#x2F;pg_regress&#39; &#x2F;usr&#x2F;bin&#x2F;prove -I ..&#x2F;..&#x2F;..&#x2F;src&#x2F;test&#x2F;perl&#x2F; -I .  t&#x2F;021_row_visibility.pl </span><br><span class="line">t&#x2F;021_row_visibility.pl .. ok     </span><br><span class="line">All tests successful.</span><br><span class="line">Files&#x3D;1, Tests&#x3D;10,  5 wallclock secs ( 0.02 usr  0.00 sys +  0.81 cusr  1.42 csys &#x3D;  2.25 CPU)</span><br><span class="line">Result: PASS</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, I explained how to run a specific test case by using variable <code>PROVE_TESTS</code> for TAP test. You can also run the some test directly manually to skip those tests either take too much time or may failed in the middle and block your test cases. </p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/10/15/what-is-backup-label/" rel="prev" title="Backup Label in PostgreSQL">
+      <i class="fa fa-chevron-left"></i> Backup Label in PostgreSQL
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Regression-test"><span class="nav-number">2.</span> <span class="nav-text">2. Regression test</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-How-to-run-a-specific-test"><span class="nav-number">3.</span> <span class="nav-text">3. How to run a specific test?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Summary"><span class="nav-number">4.</span> <span class="nav-text">4. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

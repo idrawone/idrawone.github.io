@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">14</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">19</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,689 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/08/21/How-to-setup-Postgresql-on-an-IPv6-enabled-network/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/08/21/How-to-setup-Postgresql-on-an-IPv6-enabled-network/" class="post-title-link" itemprop="url">How to setup Postgresql on an IPv6 enabled network</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-08-21 01:00:00 / Modified: 16:26:40" itemprop="dateCreated datePublished" datetime="2020-08-21T01:00:00-07:00">2020-08-21</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Debug/" itemprop="url" rel="index">
+                    <span itemprop="name">Debug</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-ipv6.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is a great open source database, not only because it supports lot of database features, but also because it supports different network setup. For example, you can set it up on an IPv6 enabled network in just a few steps. This blog will demonstrate how to setup PostgreSQL on an IPv6 network in Linux. </p>
+<p>Before we dive into the detail, let’s discuss a little bit IPv6. IPv6 was developed by the Internet Engineering Task Force (IETF) in late 1998 and was intended to replace IPv4. With the IPv4 address exhaustion issue, after about two decades, IPv6 now is finally coming into the real picture. Below is the <a href="https://www.internetsociety.org/resources/2018/state-of-ipv6-deployment-2018/" target="_blank" rel="noopener">state of IPv6 Deployment in 2018</a>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">* Over 25% of all Internet-connected networks advertise IPv6 connectivity.</span><br><span class="line">* Google reports 49 countries deliver more than 5% of traffic over IPv6, with new countries joining all the time.</span><br><span class="line">* Google reports 24 countries whose IPv6 traffic exceeds 15%.</span><br></pre></td></tr></table></figure>
+<p>If you check your home internet modem/router and most likely you will find the IPv6 is already enabled. There are many documents and RFCs explain IPv6 in much more detail. For example, <code>IP Version 6 Addressing Architecture</code> defined in <a href="https://datatracker.ietf.org/doc/rfc4291/" target="_blank" rel="noopener">RFC 4291</a>. In this blog, I will just explain some simple concepts which is required in this demo.</p>
+<h4 id="2-Setup-IPv6-network"><a href="#2-Setup-IPv6-network" class="headerlink" title="2. Setup IPv6 network"></a>2. Setup IPv6 network</h4><h5 id="Link-local-address"><a href="#Link-local-address" class="headerlink" title="Link-local address"></a>Link-local address</h5><p>Not like IPv4, all the interface of an IPv6 enabled host require a link-local address. The link-local address will always start with the prefix fe80:: and it is generated during TCP/IP stack boot up on that interface. The interesting part is that link-local address doesn’t request a DHCP server or any manual configuration. The link-local can be set to derive from the MAC address of the interface, in this case, if you know the MAC of the interface then you can create the link-local address by simply copy and paste the MAC to a <a href="https://ben.akrin.com/?p=1347" target="_blank" rel="noopener">link-local calculator</a>. </p>
+<h5 id="Global-address"><a href="#Global-address" class="headerlink" title="Global address"></a>Global address</h5><p>However, there is a limitation as the name indicated, it only works between the hosts which are directly connected. To allow the communication cross the internet or multiple routers, the host needs to have a global address. There are many different ways to setup a global IPv6 address. Here, we introduce three typical ways: Manually, DHCPv6 and SLAAC.</p>
+<ul>
+<li><p>To manually setup an IPv6 global address, you can use either <code>ip</code> or <code>ifconfig</code>. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo ip -6 addr add 2020:1:0:0::db1&#x2F;64 dev eth0 </span><br><span class="line"></span><br><span class="line">sudo ifconfig eth0 inet6 add 2020:1:0:0::db1&#x2F;64</span><br></pre></td></tr></table></figure>
+<p>Since IPv6 allows the HEX characters, you can make your own customized IPv6 address for fun. For example, configure a PostgreSQL server with IPv6 address like, <code>:db:feed</code>, <code>:da7a:ba5e</code>, <code>:db1</code>, <code>:db2</code> etc,.</p>
+</li>
+<li><p>Stateless address autoconfiguration (SLAAC) requires to have a router which broadcast the <code>router advertisement</code> periodically. The router should also response to <code>router solicitation</code> request from any host machine. Once the host receive the <code>router advertisement</code>, it will use the <code>prefix</code> to generate the global IPv6 address automatically. Below is an example,<br>Install the <code>Router Advertisement Daemon (radvd)</code> on PostgreSQL server side, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install radvd</span><br></pre></td></tr></table></figure>
+<p>then configure the radvd conf file, for example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">interface eno1</span><br><span class="line">&#123;</span><br><span class="line">   AdvSendAdvert on;</span><br><span class="line">   AdvManagedFlag off;</span><br><span class="line">   AdvOtherConfigFlag on;</span><br><span class="line">   prefix 2020:1:0:0::&#x2F;64</span><br><span class="line">   &#123;</span><br><span class="line">        AdvAutonomous on;</span><br><span class="line">   &#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>Configure a new IPv6 address on Postgres server for radvd daemon to use</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo ip -6 addr add 2020:1:0:0::db1&#x2F;64 dev eno1</span><br></pre></td></tr></table></figure>
+<p>Then start the <code>radvd</code> daemon, <code>sudo radvd -l /etc/radvd.conf</code><br>Now, if you check the ip address on the client machine side, you should see something like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">enp0s3: flags&#x3D;4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet 172.20.14.27  netmask 255.255.255.0  broadcast 172.20.14.255</span><br><span class="line">        inet6 2020:1::8dcf:b8be:dbcc:26c6  prefixlen 64  scopeid 0x0&lt;global&gt;</span><br><span class="line">        inet6 fe80::8005:8b22:cd7d:ee39  prefixlen 64  scopeid 0x20&lt;link&gt;</span><br><span class="line">        ether 08:00:27:29:ab:c9  txqueuelen 1000  (Ethernet)</span><br><span class="line">        RX packets 118  bytes 38615 (38.6 KB)</span><br><span class="line">        RX errors 0  dropped 0  overruns 0  frame 0</span><br><span class="line">        TX packets 181  bytes 26919 (26.9 KB)</span><br><span class="line">        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0</span><br></pre></td></tr></table></figure>
+<p>where, <code>2020:1::8dcf:b8be:dbcc:26c6</code> is the global address generated after receive the <code>router advertisement</code>.</p>
+</li>
+<li><p>Stateful IPv6 address is done via a DHCPv6 server. The setup is similar to the IPv4 DHCP server setup. Below is an example on an Ubuntu machine, </p>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install isc-dhcp-server</span><br></pre></td></tr></table></figure>
+<p>After the DHCP Server has been installed, edit the configuration file for IPv6 address assignment.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo vim &#x2F;etc&#x2F;dhcp&#x2F;dhcpd6.conf</span><br></pre></td></tr></table></figure>
+<p>and add below information,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">ddns-update-style none;</span><br><span class="line">default-lease-time 7200; # 12 hours</span><br><span class="line">max-lease-time 86400; # 12 hours</span><br><span class="line">authoritative;</span><br><span class="line"></span><br><span class="line">### Subnet</span><br><span class="line">subnet6 2020:2:0:0::&#x2F;64 &#123;</span><br><span class="line">    range6</span><br><span class="line">        2020:2:0:0::1001  2020:2:0:0::1005;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Configure a new IPv6 address on Postgres server for DHCPv6 server to use</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo ip -6 addr add 2020:2:0:0::db1&#x2F;64 dev eno1</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo dhcpd -6 -d -cf &#x2F;etc&#x2F;dhcp&#x2F;dhcpd6.conf eth0</span><br></pre></td></tr></table></figure>
+<p>On the client machine side, run a dhcp request for IPv6 manually. <code>sudo dhclient -6 enp0s3</code>, and then perform an ip address check.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">enp0s3: flags&#x3D;4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet 172.20.14.27  netmask 255.255.255.0  broadcast 172.20.14.255</span><br><span class="line">        inet6 2020:2::1004  prefixlen 128  scopeid 0x0&lt;global&gt;</span><br><span class="line">        inet6 2020:1::8dcf:b8be:dbcc:26c6  prefixlen 64  scopeid 0x0&lt;global&gt;</span><br><span class="line">        inet6 fe80::8005:8b22:cd7d:ee39  prefixlen 64  scopeid 0x20&lt;link&gt;</span><br><span class="line">        ether 08:00:27:29:ab:c9  txqueuelen 1000  (Ethernet)</span><br><span class="line">        RX packets 1118  bytes 253355 (253.3 KB)</span><br><span class="line">        RX errors 0  dropped 0  overruns 0  frame 0</span><br><span class="line">        TX packets 495  bytes 76673 (76.6 KB)</span><br><span class="line">        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0</span><br></pre></td></tr></table></figure>
+<p>where, <code>2020:2::1004</code> is the global IPv6 address assigned by the DHCPv6 server.</p>
+<h4 id="3-Connetivity-test-using-ping6"><a href="#3-Connetivity-test-using-ping6" class="headerlink" title="3. Connetivity test using ping6"></a>3. Connetivity test using ping6</h4><ul>
+<li>PostgreSQL server<ul>
+<li>Network interface: eno1</li>
+<li>link-local: fe80::1c79:293f:1b6e:c826</li>
+<li>IPv6 global address(SLAAC): 2020:1::db1</li>
+<li>IPv6 global address(DHCPv6): 2020:2::db1</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>psql client IPs<ul>
+<li>Network interface: enp0s3</li>
+<li>link-local: fe80::8005:8b22:cd7d:ee39</li>
+<li>IPv6 global address generated(SLAAC): 2020:1::8dcf:b8be:dbcc:26c6</li>
+<li>IPv6 global address assigned(DHCPv6): 2020:2::1004</li>
+</ul>
+</li>
+</ul>
+<h5 id="ping6-test-from-server-to-client"><a href="#ping6-test-from-server-to-client" class="headerlink" title="ping6 test from server to client"></a>ping6 test from server to client</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ ping6 fe80::8005:8b22:cd7d:ee39%eno1</span><br><span class="line">PING fe80::8005:8b22:cd7d:ee39%eno1(fe80::8005:8b22:cd7d:ee39%eno1) 56 data bytes</span><br><span class="line">64 bytes from fe80::8005:8b22:cd7d:ee39%eno1: icmp_seq&#x3D;1 ttl&#x3D;64 time&#x3D;0.582 ms</span><br><span class="line">64 bytes from fe80::8005:8b22:cd7d:ee39%eno1: icmp_seq&#x3D;2 ttl&#x3D;64 time&#x3D;0.572 ms</span><br><span class="line"></span><br><span class="line">$ ping6 2020:1::8dcf:b8be:dbcc:26c6</span><br><span class="line">PING 2020:1::8dcf:b8be:dbcc:26c6(2020:1::8dcf:b8be:dbcc:26c6) 56 data bytes</span><br><span class="line">64 bytes from 2020:1::8dcf:b8be:dbcc:26c6: icmp_seq&#x3D;1 ttl&#x3D;64 time&#x3D;0.576 ms</span><br><span class="line">64 bytes from 2020:1::8dcf:b8be:dbcc:26c6: icmp_seq&#x3D;2 ttl&#x3D;64 time&#x3D;0.601 ms</span><br><span class="line"></span><br><span class="line">$ ping6 2020:2::1004</span><br><span class="line">PING 2020:2::1004(2020:2::1004) 56 data bytes</span><br><span class="line">64 bytes from 2020:2::1004: icmp_seq&#x3D;1 ttl&#x3D;64 time&#x3D;0.896 ms</span><br><span class="line">64 bytes from 2020:2::1004: icmp_seq&#x3D;2 ttl&#x3D;64 time&#x3D;0.631 ms</span><br></pre></td></tr></table></figure>
+
+<h5 id="ping6-test-from-client-to-server"><a href="#ping6-test-from-client-to-server" class="headerlink" title="ping6 test from client to server"></a>ping6 test from client to server</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ ping6 fe80::1c79:293f:1b6e:c826%enp0s3</span><br><span class="line">PING fe80::1c79:293f:1b6e:c826%enp0s3(fe80::1c79:293f:1b6e:c826%enp0s3) 56 data bytes</span><br><span class="line">64 bytes from fe80::1c79:293f:1b6e:c826%enp0s3: icmp_seq&#x3D;1 ttl&#x3D;64 time&#x3D;0.144 ms</span><br><span class="line">64 bytes from fe80::1c79:293f:1b6e:c826%enp0s3: icmp_seq&#x3D;2 ttl&#x3D;64 time&#x3D;0.220 ms</span><br><span class="line"></span><br><span class="line">$ ping6 2020:1::db1</span><br><span class="line">PING 2020:1::db1(2020:1::db1) 56 data bytes</span><br><span class="line">64 bytes from 2020:1::db1: icmp_seq&#x3D;1 ttl&#x3D;64 time&#x3D;0.825 ms</span><br><span class="line">64 bytes from 2020:1::db1: icmp_seq&#x3D;2 ttl&#x3D;64 time&#x3D;0.520 ms</span><br><span class="line"></span><br><span class="line">$ ping6 2020:2::db1</span><br><span class="line">PING 2020:2::db1(2020:2::db1) 56 data bytes</span><br><span class="line">64 bytes from 2020:2::db1: icmp_seq&#x3D;1 ttl&#x3D;64 time&#x3D;0.508 ms</span><br><span class="line">64 bytes from 2020:2::db1: icmp_seq&#x3D;2 ttl&#x3D;64 time&#x3D;0.486 ms</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-Configure-PostgreSQL-for-IPv6"><a href="#4-Configure-PostgreSQL-for-IPv6" class="headerlink" title="4. Configure PostgreSQL for IPv6"></a>4. Configure PostgreSQL for IPv6</h4><p>Edit the postgresql.conf file to allow Postgres listen on different interfaces</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">listen_addresses &#x3D; &#39;*&#39;</span><br></pre></td></tr></table></figure>
+
+<p>Edit the host-based authentication file to allow client machine to connect with different source IPs.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># IPv6 local connections:</span><br><span class="line">host    all             all             fe80::8005:8b22:cd7d:ee39&#x2F;128           trust</span><br><span class="line">host    all             all             2020:1::8dcf:b8be:dbcc:26c6&#x2F;128         trust</span><br><span class="line">host    all             all             2020:2::1004&#x2F;128                        trust</span><br></pre></td></tr></table></figure>
+
+<h5 id="psql-client-connect-to-Postgres-server-using-link-local-address-with-interface-name"><a href="#psql-client-connect-to-Postgres-server-using-link-local-address-with-interface-name" class="headerlink" title="psql client connect to Postgres server using link-local address with interface name"></a>psql client connect to Postgres server using link-local address with interface name</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -U david -h fe80::1c79:293f:1b6e:c826%enp0s3</span><br><span class="line">psql (14devel)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT datname,pid, usename, client_addr FROM pg_stat_activity where usename&#x3D;&#39;david&#39;;</span><br><span class="line"> datname  |  pid  | usename |        client_addr        </span><br><span class="line">----------+-------+---------+---------------------------</span><br><span class="line">          | 24170 | david   | </span><br><span class="line"> postgres | 24244 | david   | fe80::8005:8b22:cd7d:ee39</span><br><span class="line">(2 rows)</span><br></pre></td></tr></table></figure>
+
+<h5 id="psql-client-connect-to-Postgres-server-using-global-address-Stateless-address"><a href="#psql-client-connect-to-Postgres-server-using-global-address-Stateless-address" class="headerlink" title="psql client connect to Postgres server using global address(Stateless address)"></a>psql client connect to Postgres server using global address(Stateless address)</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -U david -h 2020:1::db1</span><br><span class="line">psql (14devel)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT datname,pid, usename, client_addr FROM pg_stat_activity where usename&#x3D;&#39;david&#39;;</span><br><span class="line"> datname  |  pid  | usename |         client_addr         </span><br><span class="line">----------+-------+---------+-----------------------------</span><br><span class="line">          | 24131 | david   | </span><br><span class="line"> postgres | 24149 | david   | 2020:1::8dcf:b8be:dbcc:26c6</span><br></pre></td></tr></table></figure>
+
+<h5 id="psql-client-connect-to-Postgres-server-using-global-address-Stateful-address"><a href="#psql-client-connect-to-Postgres-server-using-global-address-Stateful-address" class="headerlink" title="psql client connect to Postgres server using global address(Stateful address)"></a>psql client connect to Postgres server using global address(Stateful address)</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -U david -h 2020:2::db1</span><br><span class="line">psql (14devel)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT datname,pid, usename, client_addr FROM pg_stat_activity where usename&#x3D;&#39;david&#39;;</span><br><span class="line"> datname  |  pid  | usename | client_addr  </span><br><span class="line">----------+-------+---------+--------------</span><br><span class="line">          | 24170 | david   | </span><br><span class="line"> postgres | 24235 | david   | 2020:2::1004</span><br></pre></td></tr></table></figure>
+
+<h4 id="5-Typical-errors"><a href="#5-Typical-errors" class="headerlink" title="5. Typical errors"></a>5. Typical errors</h4><h5 id="Using-link-local-to-connect-Postgres-without-the-interface-name"><a href="#Using-link-local-to-connect-Postgres-without-the-interface-name" class="headerlink" title="Using link-local to connect Postgres without the interface name"></a>Using link-local to connect Postgres without the interface name</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -U david -h fe80::1c79:293f:1b6e:c826</span><br><span class="line">psql: error: could not connect to server: could not connect to server: Invalid argument</span><br><span class="line">    Is the server running on host &quot;fe80::1c79:293f:1b6e:c826&quot; and accepting</span><br><span class="line">    TCP&#x2F;IP connections on port 5432?</span><br></pre></td></tr></table></figure>
+
+<h5 id="psql-client-using-a-wrong-global-address-as-source-address"><a href="#psql-client-using-a-wrong-global-address-as-source-address" class="headerlink" title="psql client using a wrong global address as source address"></a>psql client using a wrong global address as source address</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h 2020:2::db1</span><br><span class="line">psql: error: could not connect to server: FATAL:  no pg_hba.conf entry for host &quot;2020:1::8dcf:b8be:dbcc:26c6&quot;, user &quot;dbtest&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
+<p>This is due to multiple IPv6 global addresses available on the same interface. In this case, the application, i.e. <code>psql</code> should have an option to select the preferred IPv6, otherwise, the kernel will pick up the IPv6 global address based on predefined policy and rules. Please check <a href="http://linux-ip.net/html/routing-saddr-selection.html" target="_blank" rel="noopener">Source Address Selection</a> for details. A simple solution is the remove other global IPv6 addresses, and disable the corresponding <code>service</code> i.e. <code>radvd</code> or <code>DHCPv6</code> server.</p>
+<h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6.    Summary"></a>6.    Summary</h4><p>We demonstrated how to setup a simple IPv6 network with one Postgres server and one psql client. To enable the IPv6 configuration is pretty simple on PostgreSQL side, but some the basic IPv6 knowledge is required.</p>
+<p>Ref: [Configuring IPv6 addresses] (<a href="https://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/ch06s02.html" target="_blank" rel="noopener">https://www.tldp.org/HOWTO/Linux+IPv6-HOWTO/ch06s02.html</a>)</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/07/10/A-simple-way-to-trace-a-bug-when-you-donot-have-enough-time/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/07/10/A-simple-way-to-trace-a-bug-when-you-donot-have-enough-time/" class="post-title-link" itemprop="url">A simple way found a bug born in 1997</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-07-10 01:00:00" itemprop="dateCreated datePublished" datetime="2020-07-10T01:00:00-07:00">2020-07-10</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-07-11 11:53:36" itemprop="dateModified" datetime="2020-07-11T11:53:36-07:00">2020-07-11</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Debug/" itemprop="url" rel="index">
+                    <span itemprop="name">Debug</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-gdb-step-mult.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Whenever I tried to study PostgreSQL source code a little deeper, I always wanted to find some tools to help me understand better as I really don’t want to read the code line by line for a particular feature, but at the same time, I really wanted to figure it out quickly. Simply put, I was kind of “lazy” at that movement. Luckily, I found one very simple way to help me when I was studying the <code>Geometric Types</code> in PostgreSQL. This simple method helped me find out a bug exist since 1997. Thanks to Tom Lane who helpped fix it and committed it to Postgresql. The commit is “35d1eefb29d03d5a85f71038679f1f8a14358255” with below comments.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Fix circle_in to accept &quot;(x,y),r&quot; as it&#39;s advertised to do.</span><br><span class="line"></span><br><span class="line">Our documentation describes four allowed input syntaxes for circles,</span><br><span class="line">but the regression tests tried only three ... with predictable</span><br><span class="line">consequences.  Remarkably, this has been wrong since the circle</span><br><span class="line">datatype was added in 1997, but nobody noticed till now.</span><br></pre></td></tr></table></figure>
+
+<p>In this blog, I will use this story to explain how did I figure out this bug using a script in a very simple way.</p>
+<h4 id="2-Find-a-bug-born-in-1997"><a href="#2-Find-a-bug-born-in-1997" class="headerlink" title="2. Find a bug born in 1997"></a>2. Find a bug born in 1997</h4><p>A few months ago, I was trying to see what was all the Geometric Types PostgreSQL can support by checking the official <a href="https://www.postgresql.org/docs/current/datatype-geometric.html" target="_blank" rel="noopener">document</a>. In the section <code>8.8.7. Circles</code>, the different ways to insert a circle were described like below. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Circles are represented by a center point and radius. Values of type circle are specified using any of the following syntaxes:</span><br><span class="line"></span><br><span class="line">&lt; ( x , y ) , r &gt;</span><br><span class="line">( ( x , y ) , r )</span><br><span class="line">  ( x , y ) , r</span><br><span class="line">    x , y   , r</span><br></pre></td></tr></table></figure>
+<p>I was so suprised that there are some many ways to draw a circle in PostgreSQL, and accidently I had a psql console connected to a server at that moment. So, I decided to try all the methods one by one. However, when I followed the 3rd way to insert a circle, I encountered an error, i.e. <code>invalid input syntax for type circle</code>. Here is the what did at that moment.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE tbl_circle(id serial PRIMARY KEY, a circle);</span><br><span class="line">INSERT INTO tbl_circle(a) VALUES(&#39;( 1 , 1 ) , 5&#39;::circle );</span><br><span class="line"></span><br><span class="line">ERROR:  invalid input syntax for type circle: &quot;( 1 , 1 ) , 5&quot;</span><br><span class="line">LINE 1: INSERT INTO tbl_circle(a) VALUES(&#39;( 1 , 1 ) , 5&#39;::circle );</span><br></pre></td></tr></table></figure>
+<p>The first thoughts came to my mind was that I must have typed something wrong. But after carefully checked each character, I couldn’t find any error. However, I conldn’t believe what I saw on the screen, therefore I called my colleague to help me do a quick check. The result was the same. Then I started to think if I can go a little further to find out the bug before reporting to the community, it might help some. But, the question was how to find the issue out within limited time (I did have a lot of work need to be done in the same day, in other words, “I was busy”. Well, “busy” is actually one of the main reasons I want to discuss about this simple method).</p>
+<p>Obviously, I was not so familiar with the data type related circle in PostgreSQL source code, but I did know how to compile PostgreSQL from source code and how to use gdb to run a simple debug (keep in mind, these are all the prerequisite). </p>
+<p>I started to compile the source code with gdb enabled like below.<br><code>./configure --enable-cassert --enable-debug CFLAGS=&quot;-ggdb -O0 -g3 -fno-omit-frame-pointer”</code></p>
+<p>After the PostgerSQL server restarted, I used gdb to attach to the postgres running in background which connected to my psql console. I set up a breakpoint to the function <code>transformExprRecurse</code> (well, this is another prerequisite). I tried to repeat the circle insert query, and the gdb stopped at <code>transformExprRecurse</code>. Now, I was totally stuck. I didn’t know how to locate the bug, I had no idea what was behind the circle data type, and in which file it was implemented etc.. Then how could I move a litter further?</p>
+<p>Well, I did have one thing in my mind that I need to quickly find out the difference between the working data type and the non-working data type. To achieve this, a simple way would be just type a <code>next</code> and then press <code>enter</code>. I started to do it. But after repeated 3 times, I gave it up. I realized that I didn’t know how many times I have to repeat the process and it was not possible for me to capture the difference. Then I started to question myself whether there was a way to automatically type <code>next</code> and then <code>enter</code> until the circle insert query was finished. Thanks to <code>google</code>, yes, I found <a href="https://stackoverflow.com/questions/5812411/gdb-automatic-nexting" target="_blank" rel="noopener">this</a>. I copied and pasted the script and added <code>transformExprRecurse</code> as the default breakpoint. The scpript was ended up like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"># file: step_mult.gdb</span><br><span class="line"></span><br><span class="line">set pagination off</span><br><span class="line">set detach-on-fork off</span><br><span class="line">set schedule-multiple on</span><br><span class="line">handle SIGUSR1 noprint nostop</span><br><span class="line">handle SIGUSR2 noprint nostop</span><br><span class="line">macro define __builtin_offsetof(T, F) ((int) &amp;(((T *) 0)-&gt;F))</span><br><span class="line">macro define __extension__</span><br><span class="line">python gdb.events.exited.connect(lambda x: [gdb.execute(&#39;inferior 1&#39;), gdb.post_event(lambda: gdb.execute(&#39;continue&#39;))])</span><br><span class="line"></span><br><span class="line">set logging file gdb.log</span><br><span class="line">set logging on</span><br><span class="line"></span><br><span class="line">break transformExprRecurse</span><br><span class="line"></span><br><span class="line">####</span><br><span class="line">define step_mult</span><br><span class="line">    set $step_mult_max &#x3D; 100000</span><br><span class="line">    if $argc &gt;&#x3D; 1</span><br><span class="line">        set $step_mult_max &#x3D; $arg0</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    set $step_mult_count &#x3D; 0</span><br><span class="line">    while ($step_mult_count &lt; $step_mult_max)</span><br><span class="line">        set $step_mult_count &#x3D; $step_mult_count + 1</span><br><span class="line">        printf &quot;step #%d\n&quot;, $step_mult_count</span><br><span class="line">        step</span><br><span class="line">    end</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p>I re-attach the postgres, ran the command <code>source step_mult.gdb</code> within gdb console, and then let the postgres continue to run in the background. I switched to another console and started to insert a circle using the 3rd way again. Postgres stopped at <code>exec_simple_query</code>, then I ran <code>step_mult 10000</code>. After a while, I saw the error message on my psql console again. I changed the log file gdb.log to gdb-2nd.log and repeated the steps, but this time I inserted a circle using the 2nd way. Now, I got two gdb log files which contain all the single step for the working and non-working circle data types.</p>
+<p>I used a very nice <a href="https://www.scootersoftware.com/index.php" target="_blank" rel="noopener">Intelligent Comparison tools</a> to compare these two gdb log files and I foud the difference like below. <img src="/images/img/gdb-step-diff.png" alt="diff image">. The big difference I saw was showing in <code>circle_in</code> function within <code>src/backend/utils/adt/geo_ops.c</code>.</p>
+<p>Now, I figured out where the data type circle was implemented. To proof that it was the right place to fix this issue, I made a quick dirty fix. Then I performed a test and found the 3rd data type was kind of <code>fixed</code>. </p>
+<p>At this point, I was more confident to report this issue to the community with my <code>dirty</code> patch to proof that PostgreSQL doesn’t work with the 3rd way to draw a circle. The entire process took me about an hour, but I think finding out a bug which has stayed in PostgreSQL about 23 years in an hour is not that bad. </p>
+<h4 id="3-Summary"><a href="#3-Summary" class="headerlink" title="3.    Summary"></a>3.    Summary</h4><p>PostgreSQL is one of the best open source RDBMS in the world, and there are many other open source projects like it. As a software engineer, you might encounter something like me in your daily work. If you find something fishy but don’t have enough time, then try the way I did. It may surprise you, who knows. From my opinion, this method may be suitable for below sisutations:</p>
+<p>1) A feature is working in one use case but it doesn’t work in another very similar use case;<br>2) To find a function execution path in different conditions;<br>… </p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/05/15/Build-PostgreSQL-and-Extension-on-Windows/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/05/15/Build-PostgreSQL-and-Extension-on-Windows/" class="post-title-link" itemprop="url">Build PostgreSQL and Extension on Windows</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-05-15 01:00:00 / Modified: 15:30:10" itemprop="dateCreated datePublished" datetime="2020-05-15T01:00:00-07:00">2020-05-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Extension/" itemprop="url" rel="index">
+                    <span itemprop="name">Extension</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Extension/Build/" itemprop="url" rel="index">
+                    <span itemprop="name">Build</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Extension/Build/Windows/" itemprop="url" rel="index">
+                    <span itemprop="name">Windows</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Extension/Build/Windows/VS2019/" itemprop="url" rel="index">
+                    <span itemprop="name">VS2019</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/win-fi.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is an open-source RDMS and running across many platforms including Linux (all recent distributions), Windows, FreeBSD, OpenBSD, NetBSD, Mac OS X, AIX, HP/UX, IRIX, Solaris, Tru64 Unix, and UnixWare. There are many discussions about how to build Postgres and extensions from source code on a Linux-like environment, but sometimes, a developer may want to quickly setup a Windows environment to check a feature for cross-platform support. This blog is going to explain how to build Postgres and extensions from source code on Windows platforms and it was tested on Windows 7, 10 and 2019 Server.</p>
+<h4 id="2-Environment-setup"><a href="#2-Environment-setup" class="headerlink" title="2. Environment setup"></a>2. Environment setup</h4><p>This blog refers to the official <a href="https://www.postgresql.org/docs/12/install-windows-full.html" target="_blank" rel="noopener">document</a> and the blog <a href="https://www.2ndquadrant.com/en/blog/compiling-postgresql-extensions-visual-studio-windows" target="_blank" rel="noopener">Compiling PostgreSQL extensions with Visual Studio on Windows</a>, but providing many detailed screenshots on the latest version Visual Studio 2019 for building an extension as a standlone VS2019 project.</p>
+<h5 id="3-Install-VS2019-Windows-SDK-and-other-tools"><a href="#3-Install-VS2019-Windows-SDK-and-other-tools" class="headerlink" title="3. Install VS2019, Windows SDK and other tools"></a>3. Install VS2019, Windows SDK and other tools</h5><p>Download the latest <a href="https://visualstudio.microsoft.com/downloads/?utm_medium=post-banner&utm_source=microsoft.com&utm_campaign=channel+banner&utm_content=launch+vs2019" target="_blank" rel="noopener">Visual Studio 2019</a> package. During the installation process, selecting the option <code>Desktop development with C++</code> is enough to build Postgres. This option will install <code>MSVC for VS 2019</code>, <code>Windows 10 SDK</code> and some basic <code>C/C++ building tools</code>. As described in the official document, <a href="https://platform.activestate.com/activestate/activeperl-5.28/auto-fork?utm_source=activestate.com&utm_medium=referral&utm_content=activeperl-5.28-mac&utm_campaign=user-acquisition" target="_blank" rel="noopener">ActiveState Perl</a> is required to run the build and generate scripts, and <a href="https://platform.activestate.com/activestate/activetcl-8.6/auto-fork?utm_source=activestate.com&utm_medium=referral&utm_content=activetcl-8.6&utm_campaign=user-acquisition" target="_blank" rel="noopener">ActiveState TCL</a> is required for building PL/Tcl. If the you build from a released source code <a href="https://www.postgresql.org/ftp/source/v12.3/" target="_blank" rel="noopener">tar file</a>, then install above tools should be enough for the default configuration, however if you build with the source coded cloned from <a href="https://github.com/postgres/postgres.git" target="_blank" rel="noopener">github</a>, then you need to install <code>Bison</code> and <code>Flex</code>, which can be found <a href="http://www.mingw.org/wiki/MSYS" target="_blank" rel="noopener">here</a>.<br>If you prefer to use Linux style commands as much as possible, then you can install <a href="https://github.com/git-for-windows/git/releases/latest" target="_blank" rel="noopener">git bash</a>. After all the tools has been installed, you need to <code>edit the system environment variables</code> to include all the binaries paths, for example, <img src="/images/img/win-env.png" alt="windows environment image"></p>
+<h5 id="4-Build-postgres"><a href="#4-Build-postgres" class="headerlink" title="4. Build postgres"></a>4. Build postgres</h5><p>If you have an extension need to be built under the source code tree, then it is time to clone or copy your extension to <code>contrib</code> folder before starting the build. To build Postgres is pretty simple, just turn on VS 2019 terminal i.e. <code>Developer Command Prompt for VS 2019</code> and then navigate to the windows build folder inside the postgres source code, for example, <code>c:\Users\Administrator\Downloads\postgres\src\tools\msvc&gt;</code> and then run <code>build.bat</code>.</p>
+<h5 id="5-Regress-test"><a href="#5-Regress-test" class="headerlink" title="5. Regress test"></a>5. Regress test</h5><p>If the build is succeeded, then you can perform a regress test by running <code>vcregress check</code>. To perform a regress test for the extensions, run the command <code>vcregress contribcheck</code>. If you are developing an extension on Windows and you want to speed up the build, then you can build your extension only by running the build script with the extension name, for example, <code>build.bat wal2mongo</code>. However, you can’t run a regress test for each individual extension. This can be worked around by removing all other extension from <code>contrib</code> folder temporally.</p>
+<h5 id="6-Build-extension-in-an-independent-project-using-VS-2019"><a href="#6-Build-extension-in-an-independent-project-using-VS-2019" class="headerlink" title="6. Build extension in an independent project using VS 2019"></a>6. Build extension in an independent project using VS 2019</h5><p>Sometimes a developer may want to build an extension within VS2019 IDE. This is a little bit tricky and not even recommended to do it in this way but it is possible. The blog mentioned above has a detailed discussion about this topic. Here, we provide a step by step guide to walk you through the whole process on VS 2019.</p>
+<ul>
+<li>Start VS 2019 and <code>Create a new project</code></li>
+<li>Select <code>Empty Project</code> template, which will create a C/C++ for Windows without any starting files.</li>
+<li>Give a name for this extension project, for example <code>wal2mongo</code> (We use <a href="https://github.com/HighgoSoftware/wal2mongo.git" target="_blank" rel="noopener">wal2mongo</a> to demonstrate how to build an extension using VS 2019)</li>
+<li>Right click on the project, select <code>Add</code> then <code>New Item...</code></li>
+<li>Select <code>C++ File (.cpp)</code> template and name the file as <code>wal2mongo.c</code></li>
+<li>Copy the whole content from <a href="https://github.com/HighgoSoftware/wal2mongo/blob/release/wal2mongo.c" target="_blank" rel="noopener">this file</a> to the newly created <code>wal2mongo.c</code> file</li>
+<li>Add <code>PGDLLEXPORT</code> after the keyword <code>extern</code>, otherwise MSVC will not export its symbol.<br>the original file,<br><img src="/images/img/win-before.png" alt="before change image"><br>and how it looks like after the changes.<br><img src="/images/img/win-after.png" alt="after change image"></li>
+<li>Right click the project, select <code>Properties</code> and then change following in order,<br>1 Click on <code>Configuration Properities</code> -&gt; <code>General</code> -&gt; Configuration Type, then select <code>Dynamic Library (.dll)</code><br><img src="/images/img/win-pro-1.png" alt="vs pro-1 image"><br>2 Click on <code>Configuration Prosperities</code> -&gt; <code>C/C++</code> -&gt; <code>General</code>, add the including paths in the order below<br><img src="/images/img/win-pro-2.png" alt="vs pro-2 image"><br>3 Click on <code>Configuration Prosperities</code> -&gt; <code>C/C++</code> -&gt; <code>Code Generation</code> -&gt; <code>Enable C++ Exceptions</code>, select <code>No</code><br><img src="/images/img/win-pro-3.png" alt="vs pro-3 image"><br>4 <code>Configuration Prosperities</code> -&gt; <code>C/C++</code> -&gt; <code>Advanced</code> -&gt; <code>Compile As</code>, select <code>Compile as C Code(/TC)</code><br><img src="/images/img/win-pro-4.png" alt="vs pro-4 image"><br>5 Click on <code>Configuration Prosperities</code> -&gt; <code>Linker</code> -&gt; <code>General</code> -&gt; <code>Additional Library Directories</code>, enter the lib path where your Postgres libraries are installed<br><img src="/images/img/win-pro-5.png" alt="vs pro-5 image"><br>6 Click on <code>Configuration Prosperities</code> -&gt; <code>Linker</code> -&gt; <code>Input</code> -&gt; <code>Additional Dependencies</code>, add <code>postgres.lib</code><br><img src="/images/img/win-pro-6.png" alt="vs pro-6 image"><br>7 Click on <code>Configuration Prosperities</code> -&gt; <code>Linker</code> -&gt; <code>Manifest File</code> -&gt; <code>Generate Manifest</code>, select <code>No (/MANIFEST:NO)</code><br><img src="/images/img/win-pro-7.png" alt="vs pro-7 image"></li>
+<li>Finally, right click on the project and then select build.<br>If everything goes fine, then you should see <code>wal2mongo.dll</code> is created. Copy <code>wal2mongo.dll</code> to the lib folder where the Postgres libraries were installed. Then you should be able to test this extension as normal.</li>
+</ul>
+<h4 id="7-Summary"><a href="#7-Summary" class="headerlink" title="7. Summary"></a>7. Summary</h4><p>In this blog, we discussed how to build postgres and extension on Windows, especially to build an extension within VS2019. </p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/" class="post-title-link" itemprop="url">Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-04-17 04:00:00 / Modified: 14:39:05" itemprop="dateCreated datePublished" datetime="2020-04-17T04:00:00-07:00">2020-04-17</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/" itemprop="url" rel="index">
+                    <span itemprop="name">Replication</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/" itemprop="url" rel="index">
+                    <span itemprop="name">Logical</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/" itemprop="url" rel="index">
+                    <span itemprop="name">Decoding</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/" itemprop="url" rel="index">
+                    <span itemprop="name">Plugin</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/" itemprop="url" rel="index">
+                    <span itemprop="name">MongoDB</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/Docker/" itemprop="url" rel="index">
+                    <span itemprop="name">Docker</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/Docker/Compose/" itemprop="url" rel="index">
+                    <span itemprop="name">Compose</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/w2m-docker-fi.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>“Postgres, is a free and open-source relational database management system (RDBMS) emphasizing extensibility and SQL compliance.” This is the highlight of PostgreSQL in a sentence from Wikipedia. Yes, the extensibility of PostgreSQL is extremely useful when you have some special requirements. This blog will discuss how to use logical decoding output plugin to replicate multiple PostgreSQL servers to a single MongoDB server and the environment setup using docker compose for a quick Proof of Concept.</p>
+<h4 id="2-Logical-decoding-output-plugin"><a href="#2-Logical-decoding-output-plugin" class="headerlink" title="2. Logical decoding output plugin"></a>2. Logical decoding output plugin</h4><p>Start from version 9.5, PostgreSQL provides a solution to allow users to write their own decoding logic to reformat the output before sending it to the subscriber through a wal sender. This feature is called logical decoding output plugin. With this feature, other applications can get a specific data format from PostgreSQL database easily, and then use their own existing tools or algorithms to continue the data analysis. For example, replicating multiple Postgres servers to a single MongoDB server and then perform the real-time analytics and data visualization in MongoDB. There are many different decoding plugins available at <a href="https://wiki.postgresql.org/wiki/Logical_Decoding_Plugins" target="_blank" rel="noopener">here</a>, however <a href="https://github.com/HighgoSoftware/wal2mongo" target="_blank" rel="noopener"><code>wal2mongo</code></a> is only one can generate a JavaScript format data that can be used by MongoDB directly. You can use it following this blog to practice how data replication can be done from multiple Postgres databases to a MongoDB database using logical decoding output plugin.</p>
+<ul>
+<li>Logical decoding output plugin framework</li>
+</ul>
+<p>The logical decoding output plugin framework has a few predefined callback <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html" target="_blank" rel="noopener">interfaces</a>. These callbacks are registered in an initialization function named <code>_PG_output_plugin_init</code>, which will be called when the plugin is loaded as a shared library. After hookup with these interfaces by referring to the example <a href="https://www.postgresql.org/docs/current/test-decoding.html" target="_blank" rel="noopener">test_decoding</a>, the output decoding plugin will get notified about the changes that is happening via various callback interfaces. In these callback interfaces, the one will get noticed each time when an insert, update or delete happens is <code>LogicalDecodeChangeCB</code>. Most of the output formatting related logic should be done in a function which is registered to this interface, such as, map a Postgres data type to a MongoDB native data type.<br>Before writing your own logical decoding plugin, two basic things need to be mentioned here: one is the change callback interface is triggered based on each row, i.e. if you have multiple rows changed in one transaction, then you will get multiple times call back; the other is that the callback is triggered only by the row changes that have been safely saved to WAL files. The changes that were rolled back by the transaction will not trigger the callback.</p>
+<ul>
+<li>wal2mongo decoding plugin</li>
+</ul>
+<p><code>wal2mongo</code> is a logical decoding plugin, it mainly converts the DML operation such as insert, update and delete into a JavaScript format which later can be imported into MongoDB by using <code>mongo</code> client.</p>
+<ul>
+<li>Logical decoding data changes flow<br><img src="/images/img/w2m-flow-chart.png" alt="flow chart image"><br>The diagram above shows the data changes flow. We can use <code>psql</code> client to simulate the Application and perform database operation such as create table, insert records, update records and then delete records. The Postgres server backend will save the database changes to WAL first and then notify the WAL sender. The WAL sender will read the changes from WAL and get the output decoded by <code>wal2mongo</code> and then send the changes to the connected subscriber, i.e <code>pg_recvlogical</code> in this blog. <code>pg_recvlogical</code> will save the output as a JavaScript file, then later it will be imported to MongoDB using <code>mongo</code> client.</li>
+</ul>
+<p>To exercise this, we need to change <code>wal_level</code> to <code>logical</code> and make sure <code>max_wal_senders</code> is at least <code>2</code>, then restart Postgres server after the changes.</p>
+<ul>
+<li>Example of <code>wal2mongo</code> output</li>
+</ul>
+<p><code>wal2mongo</code> is designed to replicate the data changes from Postgres to MongoDB, not like a Postgres standby which need to replicate everything. Therefore, the focus is on the mostly used DML operation such as INSERT, UPDATE and DELETE. The diagram below shows the steps inclduing create a table, insert some records, do some update, and then perform a delete and how the data output looks like. Here, you have to change the table replica identity to full, otherwise, you won’t be able to replicate the UPDATE correctly.<br><img src="/images/img/w2m-sequence-chart.png" alt="seq chart image"></p>
+<h4 id="2-Automatic-the-environment-setup-using-docker-compose"><a href="#2-Automatic-the-environment-setup-using-docker-compose" class="headerlink" title="2. Automatic the environment setup using docker compose"></a>2. Automatic the environment setup using docker compose</h4><p>Setup an environment like the one mentioned above to test a logical output plugin may take some time, especially when a user just wants to give a quickly try. I will introduce an easy way using docker to do the work. A Docker environment can be very useful when you want to practice a new technology which requires a complicated setup, or multiple machines to be available. It also help when you need such an environment from time to time, especially when you need it to be available “immediately” and then discard it after you finished your work.<br>To achieve such an environment with multiple Postgres servers and one MongoDB server, I built two docker images: one is a dedicated postgres with wal2mongo installed, and the other one is a dedicated mongod with the <code>pg_recvlogical</code> tools installed. Here is a cluster environment running on a sinlge physical machine using the files available at <a href="">here</a>.<br><img src="/images/img/w2m-docker-diagram.png" alt="docker image"></p>
+<ul>
+<li>Dockerfile for postgres<br>This Dockerfile is to build a docker image with the latest PostgreSQL 12.2 offical release and the <code>wal2mongo</code> installed.<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">FROM centos:centos7</span><br><span class="line">MAINTAINER The CentOS Project &lt;cloud-ops@centos.org&gt;</span><br><span class="line"></span><br><span class="line">RUN yum -y install https:&#x2F;&#x2F;download.postgresql.org&#x2F;pub&#x2F;repos&#x2F;yum&#x2F;reporpms&#x2F;EL-7-x86_64&#x2F;pgdg-redhat-repo-latest.noarch.rpm</span><br><span class="line">RUN yum -y update; yum -y install sudo epel-release yum-utils net-tools which \</span><br><span class="line">		postgresql12-server postgresql12 \</span><br><span class="line">		git gcc make clang zlib-devel readline-devel postgresql12-devel; yum clean all</span><br><span class="line"></span><br><span class="line">RUN usermod -aG wheel postgres</span><br><span class="line">RUN echo &quot;export PATH&#x3D;&#x2F;usr&#x2F;pgsql-12&#x2F;bin:$PATH&quot; | tee -a &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;.bashrc</span><br><span class="line">RUN echo &quot;postgres ALL&#x3D;(root) NOPASSWD:ALL&quot; &gt; &#x2F;etc&#x2F;sudoers.d&#x2F;postgres &amp;&amp; chmod 0440 &#x2F;etc&#x2F;sudoers.d&#x2F;postgres</span><br><span class="line"></span><br><span class="line">USER postgres</span><br><span class="line">RUN eval &quot;sudo -E env &quot;PATH&#x3D;$PATH&quot; USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no install&quot;</span><br><span class="line"></span><br><span class="line">VOLUME  [&quot;&#x2F;var&#x2F;log&#x2F;pgsql&quot;, &quot;&#x2F;var&#x2F;lib&#x2F;pgsql&quot;]</span><br><span class="line">EXPOSE 5432</span><br><span class="line"></span><br><span class="line">COPY run.sh .</span><br><span class="line">CMD [&quot;&#x2F;run.sh&quot;]</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>What inside the run.sh script is just a simple postgres start command. The way I used it here is to avoid rebuild the image when you want to start the container in different ways.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">&#x2F;usr&#x2F;pgsql-12&#x2F;bin&#x2F;pg_ctl -D &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data -l &#x2F;var&#x2F;log&#x2F;pgsql&#x2F;logfile start</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>Dockfile for mongod<br>The dockerfile for mongod has the offical MongoDB 4.25 release and pg_recvlogical 12.2 installed.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">FROM centos:centos7</span><br><span class="line">MAINTAINER The CentOS Project &lt;cloud-ops@centos.org&gt;</span><br><span class="line"></span><br><span class="line">COPY mongodb.repo &#x2F;etc&#x2F;yum.repos.d&#x2F;</span><br><span class="line">RUN yum -y install mongodb-org-4.2.5 mongodb-org-server-4.2.5 	\</span><br><span class="line">		mongodb-org-shell-4.2.5 mongodb-org-mongos-4.2.5 		\</span><br><span class="line">		mongodb-org-tools-4.2.5 postgresql12-contrib; yum clean all</span><br><span class="line">RUN mkdir -p &#x2F;data&#x2F;db</span><br><span class="line"></span><br><span class="line">RUN usermod -aG wheel mongod</span><br><span class="line">RUN echo &quot;mongod ALL&#x3D;(root) NOPASSWD:ALL&quot; &gt; &#x2F;etc&#x2F;sudoers.d&#x2F;mongod &amp;&amp; \</span><br><span class="line">		chmod 0440 &#x2F;etc&#x2F;sudoers.d&#x2F;mongod</span><br><span class="line">RUN echo &quot;export PATH&#x3D;&#x2F;usr&#x2F;pgsql-12&#x2F;bin:$PATH&quot; | tee -a &#x2F;root&#x2F;.bashrc</span><br><span class="line">VOLUME  [&quot;&#x2F;data&#x2F;db&quot;, &quot;&#x2F;var&#x2F;log&#x2F;mongodb&quot;]</span><br><span class="line"></span><br><span class="line">EXPOSE 27017</span><br><span class="line">ENTRYPOINT [&quot;&#x2F;usr&#x2F;bin&#x2F;mongod&quot;, &quot;--bind_ip_all&quot;]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Service compose file<br>The service docker compose file is to help setup two Postgres servers and one MongodDB servere, and make sure they are be able to communicate using hostname.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">version: &#39;3.0&#39;</span><br><span class="line"></span><br><span class="line">services:</span><br><span class="line">  mongo:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;mongod:4.2.5&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;27017:27017&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;mgdata:&#x2F;data&#x2F;db</span><br><span class="line">      - .&#x2F;scripts&#x2F;p2m.sh:&#x2F;p2m.sh</span><br><span class="line"></span><br><span class="line">  pg1:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;postgres:12.2&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;5432&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;pg1data:&#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data</span><br><span class="line">      - .&#x2F;scripts&#x2F;data_gen.sh:&#x2F;data_gen.sh</span><br><span class="line"></span><br><span class="line">  pg2:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;postgres:12.2&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;5432&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;pg2data:&#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data</span><br><span class="line">      - .&#x2F;scripts&#x2F;data_gen.sh:&#x2F;data_gen.sh</span><br></pre></td></tr></table></figure>
+<p>You can easily extend the Postgres servers by adding more instances to this service docker compose file.</p>
+</li>
+</ul>
+<p>To build the containers, run command <code>docker-compose -f service-compose.yml up -d</code>. After a while, you should see two Postgres servers and one MongoDB server are running like below.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ docker ps</span><br><span class="line">CONTAINER ID        IMAGE                 COMMAND                  CREATED              STATUS              PORTS                      NAMES</span><br><span class="line">935a3d339e71        mongod:4.2.5          &quot;&#x2F;usr&#x2F;bin&#x2F;mongod --b…&quot;   About a minute ago   Up About a minute   0.0.0.0:27017-&gt;27017&#x2F;tcp   pg2mongo_mongo_1</span><br><span class="line">d9497be07ce5        postgres:12.2         &quot;&#x2F;run.sh&quot;                About a minute ago   Up About a minute   0.0.0.0:54322-&gt;5432&#x2F;tcp    pg2mongo_pg2_1</span><br><span class="line">50eb555b5719        postgres:12.2         &quot;&#x2F;run.sh&quot;                About a minute ago   Up 38 seconds       0.0.0.0:54321-&gt;5432&#x2F;tcp    pg2mongo_pg1_1</span><br></pre></td></tr></table></figure>
+
+<p>To setup the logical replication slot on each postgres server, and connect to each slot using <code>pg_recvlogical</code> then pipe the data changes to <code>mongo</code> client and feed the changes to MongoDB automaticlly, run a command like this <code>docker exec -it pg2mongo_mongo_1 bash /p2m.sh 1 2</code>. Where the <code>p2m.sh</code> is a simple demo script to allow you using <code>pg_recvlogical</code> to create slot, and connect to the slot then dump the message to a internal pipe. Then the <code>mongo</code> client will read the pipe and import the changes to MongoDB. You can check it by log into the mongod container and type a <code>ps -ef</code> to see the running services.</p>
+<ul>
+<li><p>Generate database changes<br>To simulate the data changes, you can use <code>pgbench</code>. There are two ways to do it: one is to log into each postgres instance and type the pgbench command; the other way is to map a local script to all postgres instances, then run the script from your host machine. For example <code>docker exec -it pg2mongo_pg1_1 bash /data_gen.sh</code></p>
+</li>
+<li><p>Verify the data changes<br>To verify the data changes, you can log into the mongod container, and then use the mongo cient to check the data changes imported automatically. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; use mycluster_postgres_w2m_slot2;</span><br><span class="line">switched to db mycluster_postgres_w2m_slot2</span><br><span class="line">&gt; db.pgbench_accounts.count();</span><br><span class="line">10028</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Modify the output plugin and reinstall it<br>You can log into any postgres server and find out the source code and make some changes, then recompile, install it and run a regression test, etc. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">docker exec -it pg2mongo_pg1_1 bash</span><br><span class="line">bash-4.2$ cd &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;sources&#x2F;wal2mongo&#x2F;</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make clean CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make installcheck-force  CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ sudo -E env &quot;PATH&#x3D;$PATH&quot; USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no install</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="3-logical-decoding-output-plugin-limitations"><a href="#3-logical-decoding-output-plugin-limitations" class="headerlink" title="3. logical decoding output plugin limitations"></a>3. logical decoding output plugin limitations</h4><p>The logical decoding output plugin is pretty useful feature, but still has some limitations. For example,</p>
+<ul>
+<li>Only physical relation tables can trigger logical decoding callback, views and sequences cannot trigger</li>
+<li>The tables must have primary key and replica identity need to be set properly</li>
+<li>Database schemas are not be able to be replicated</li>
+<li>No large objects can be replicated<br>…</li>
+</ul>
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed how to use the logical decoding output plugin to replicate multiple PostgreSQL servers to a single MongoDB server, and provide a docker environment setup to perform a quick Proof Of Concept.</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part-3: the status of authentication, encryption and user principal</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-03-15 04:00:00" itemprop="dateCreated datePublished" datetime="2020-03-15T04:00:00-07:00">2020-03-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-03-18 13:24:16" itemprop="dateModified" datetime="2020-03-18T13:24:16-07:00">2020-03-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/" itemprop="url" rel="index">
+                    <span itemprop="name">Kerberos</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/" itemprop="url" rel="index">
+                    <span itemprop="name">GSSAPI</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/Authentication/" itemprop="url" rel="index">
+                    <span itemprop="name">Authentication</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/" itemprop="url" rel="index">
+                    <span itemprop="name">Ubuntu</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-part3.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authentication, encryption and user principal information when given different connection options.</p>
+<h4 id="2-pg-stat-gssapi-view"><a href="#2-pg-stat-gssapi-view" class="headerlink" title="2. pg_stat_gssapi view"></a>2. pg_stat_gssapi view</h4><p>According to the official <a href="https://www.postgresql.org/docs/current/gssapi-auth.html" target="_blank" rel="noopener">PostgreSQL document</a>, “<em>PostgreSQL supports GSSAPI for use as either an encrypted, authenticated layer, or for authentication only.</em>“ To check the authentication, encryption and user principal, we need to use <code>pg_stat_gssapi</code> view, which is a dynamic statistics views containing one row per backend and showing the information about GSSAPI authentication and encryption used on this connection.</p>
+<p>Before start the test below, make sure the <code>PostgreSQL server</code> and the <code>psql client</code> has the option <code>--with-gssap</code> enabled during build time.</p>
+<h4 id="3-Authentication-and-Encryption-status"><a href="#3-Authentication-and-Encryption-status" class="headerlink" title="3. Authentication and Encryption status"></a>3. Authentication and Encryption status</h4><ul>
+<li><strong>Scenario 1:</strong></li>
+</ul>
+<p>Both authentication and encryption are enabled when the host-based authentication is configured with <code>hostgssenc</code> and <code>gss</code> in <code>pg_hba.conf</code><br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostgssenc  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
+
+<p>Initiate the user <code>postgres</code> credential cache using <code>kinit</code>, and then connect to PostgreSQL server with user <code>postgres</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2274 | t                 | t         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>From the result, we can see this connection is encrypted and the user is authenticated with principal <code>postgres@HIGHGO.CA</code>.</p>
+<ul>
+<li><strong>Scenario 2:</strong></li>
+</ul>
+<p>The encryption will be disabled, but user authentication is still enabled when the host-based authentication is configured with <code>hostnogssenc</code> and <code>gss</code> in <code>pg_hba.conf</code><br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostnogssenc  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2291 | t                 | f         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>The result tells no encryption, but user has been authenticated using principal <code>postgres@HIGHGO.CA</code></p>
+<ul>
+<li><strong>Scenario 3:</strong></li>
+</ul>
+<p>Both encryption and authentication are all enabled when the host-based authentication is configured with <code>host</code> and <code>gss</code> in <code>pg_hba.conf</code>.<br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2309 | t                 | t         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>This result is the same as the first one, meaning, <code>host</code> is equivalent to <code>hostgssenc</code> when <code>gss</code> is specified.</p>
+<ul>
+<li><strong>Scenario 4:</strong></li>
+</ul>
+<p>The authentication will be disabled, but encryption is still on when the host-based authentication is configured with <code>host</code> and <code>trust</code> in <code>pg_hba.conf</code>.<br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  trust</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted | principal </span><br><span class="line">------+-------------------+-----------+-----------</span><br><span class="line"> 2322 | f                 | t         | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>This result tells that the encryption will be always on when <code>--with-gssapi</code> is enabled during build time, unless <code>hostnogssenc</code> is specified in the host-based authentication file.</p>
+<ul>
+<li><strong>Scenario 5:</strong></li>
+</ul>
+<p>Both authentication and encryption will be disabled when the host-based authentication is configured with <code>host</code> and <code>trust</code> in <code>pg_hba.conf</code>, and the client <code>psql</code> requests a non-gssenc mode connection, i.e. <code>gssencmode=disable</code>.<br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  trust</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -h pg.highgo.ca -U postgres -d &quot;dbname&#x3D;postgres gssencmode&#x3D;disable&quot;</span><br><span class="line">psql (12.2)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted | principal </span><br><span class="line">------+-------------------+-----------+-----------</span><br><span class="line"> 2328 | f                 | f         | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>You can also achieve the same result by setting the environment <code>PGGSSENCMODE=disable</code> from the client side. For example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PGGSSENCMODE&#x3D;disable psql -h pg.highgo.ca -U postgres -d postgres</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed how to check authentication, encryption and user principal in 5 different scenarios. As you can see once <code>--with-gssapi</code> is enabled in PostgreSQL, the encryption will always be turned on unless you specify <code>hostnogssenc</code> in the host-based authentication file, or manually disable gssenc mode from a client side. Knowing the difference might help you when working the security related environment setup using GSSAPI.</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -994,12 +1677,12 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-count">19</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-count">50</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

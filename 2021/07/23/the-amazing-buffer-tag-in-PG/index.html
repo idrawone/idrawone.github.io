@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewI was working on the PostgreSQL storage related features recently, and I found PostgreSQL has designed an amazing storage addressing mechanism, i.e. Buffer Tag. In this blog, I want to sha">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Amazing Buffer Tag in PostgreSQL">
+<meta property="og:url" content="https://idrawone.github.io/2021/07/23/the-amazing-buffer-tag-in-PG/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewI was working on the PostgreSQL storage related features recently, and I found PostgreSQL has designed an amazing storage addressing mechanism, i.e. Buffer Tag. In this blog, I want to sha">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi_buffer_tag.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/buffer-tag-mapping.png">
+<meta property="article:published_time" content="2021-07-23T08:00:00.000Z">
+<meta property="article:modified_time" content="2021-07-23T21:49:52.009Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi_buffer_tag.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2021/07/23/the-amazing-buffer-tag-in-PG/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>The Amazing Buffer Tag in PostgreSQL | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">19</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/07/23/the-amazing-buffer-tag-in-PG/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          The Amazing Buffer Tag in PostgreSQL
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-07-23 01:00:00 / Modified: 14:49:52" itemprop="dateCreated datePublished" datetime="2021-07-23T01:00:00-07:00">2021-07-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/buffer-tag/" itemprop="url" rel="index">
+                    <span itemprop="name">buffer tag</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/buffer-tag/hashtable/" itemprop="url" rel="index">
+                    <span itemprop="name">hashtable</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/buffer-tag/hashtable/lookup/" itemprop="url" rel="index">
+                    <span itemprop="name">lookup</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi_buffer_tag.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>I was working on the PostgreSQL storage related features recently, and I found PostgreSQL has designed an amazing storage addressing mechanism, i.e. Buffer Tag. In this blog, I want to share with you my understanding about the Buffer Tag and some potential usage of it.</p>
+<h4 id="2-Buffer-Tag"><a href="#2-Buffer-Tag" class="headerlink" title="2. Buffer Tag"></a>2. Buffer Tag</h4><p>I was always curious to know how PostgreSQl can find out the tuple data blocks so quickly when the first time I started to use PostgreSQL in an IoT project, but I never got the chance to look it into details even though I knew PostgreSQL is an very well organized open-source project. Until I recently got a task which needs to solve some storage related issue in PostgreSQL. There is very detailed explanation about how Buffer Manger works in an online PostgreSQL books for developers <a href="https://www.interdb.jp/pg/index.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a>, one of the best PostgreSQL books I would recommend to the beginner of PostgreSQL development to read.</p>
+<p>Buffer Tag, in simple words, is just five numbers. Why it is five numbers? First, all the objects including the storage files are managed by Object Identifiers, i.e. OID. For example, when user creates a table, the table name is mapped to an OID; when user creates a database, the name is mapped to an OID; when the corresponding data need to be persistent on disk, the files is also named using OID. Secondly, when a table requires more pages to store more tuples, then each page for the same table is managed by the page number in sequence. For example, when PostgreSQL needs to estimate the table size before decide what kind of scan should be used to find out the tuple faster, it need to know the number of blocks information. Thirdly, it is easy to understand that data tuples are the major user data need to be stored, but in order to better manage these data tuples, PostgreSQL needs others information, such as visibility to manage the status of these data tuples, and free space to optimize files usage. So this ends up with five numbers, i.e. Tablespace, Database, Table, ForkNumber, BlockNumber. </p>
+<p>Given these five numbers, PostgreSQL can always find out where the data tuples are stored, which file is used, and what size the table is etc. </p>
+<h4 id="3-How-Buffer-Tag-is-used"><a href="#3-How-Buffer-Tag-is-used" class="headerlink" title="3. How Buffer Tag is used"></a>3. How Buffer Tag is used</h4><p>Now, we have the buffer tag, five numbers, but how it is used in PosggreSQL. One typical use case of buffer tag is to help buffer manager to manage the location of memory blocks in the buffer pool/array. In this case, a hash table was introduced to resolve the mapping between buffer tag and the location of memory block in buffer pool/array. Here is a picture to show relationship among buffer tag, hashtable, buffer descriptor, and buffer pool/array.</p>
+<p><img src="/images/img/buffer-tag-mapping.png" alt="Buffer Tag Mapping"></p>
+<p>For example, the first green buffer tag {(1663, 13589, 16387), 0, 0} indicates a table space 1663, a database 12709, and a table 16387 with forkNumber 0 (main fork for tuples) which stored in a file at block 0. The buffer tag has a hash value 1536704684 which has been assigned to the memory block 0 managed by buffer manager at this moment. Since buffer descriptor is addressed using the same slot number as memory block in buffer pool/array, so they both share the same slot number 0, in this case.</p>
+<p>With the above relationship, PostgreSQL can find out the memory block location or assign buffer slot to a new memory block for particular buffer tag.</p>
+<p>The other typical use case of buffer tag is to help the storage manager to manage the corresponding files. In this case, the blockNumber is always to 0 since it doesn’t require multiple blocks to store more data. Here, you can create your use case of buffer tag. For example, use the buf_id as the number of blocks for each database relation instead of using it to indicate the memory block location. Moreover, you can also use the buffer tag plus the hashtable to manage multiple information such as having both buf_id for location of the memory block and adding a new attribute total to manage the number of blocks. You can achieve this by define a different buffer lookup entry. For example, </p>
+<p>The original buffer lookup entry using buffer tag to lookup the location of memory block.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;* entry for buffer lookup hashtable *&#x2F;</span><br><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">    BufferTag   key;            &#x2F;* Tag of a disk page *&#x2F;</span><br><span class="line">    int         id;             &#x2F;* Associated buffer ID *&#x2F;</span><br><span class="line">&#125; BufferLookupEnt;</span><br></pre></td></tr></table></figure>
+
+<p>Below is an example of buffer lookup entry which can lookup both the location of memory block and the number of blocks used by this particular buffer tag.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">    BufferTag   key;            &#x2F;* Tag of a disk page    *&#x2F;</span><br><span class="line">    int         id;             &#x2F;* Associated buffer ID  *&#x2F;</span><br><span class="line">    int         total;          &#x2F;* the total number of X *&#x2F;</span><br><span class="line">&#125; ESRelLookupEnt;</span><br><span class="line">&#96;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed what is Buffer Tag, how it is used in PostgreSQL and some potential usage of Buffer Tag to address the mapping issues between tables to storage files as well as the lookup issues.</p>
+<p><em><strong>Reference:</strong></em></p>
+<ol>
+<li><a href="https://www.interdb.jp/pg/index.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/03/03/how-to-create-a-system-info-function/" rel="prev" title="How to create a system information function in PostgreSQL">
+      <i class="fa fa-chevron-left"></i> How to create a system information function in PostgreSQL
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/" rel="next" title="How batch insertion was done in postgres_fdw">
+      How batch insertion was done in postgres_fdw <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Buffer-Tag"><span class="nav-number">2.</span> <span class="nav-text">2. Buffer Tag</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-How-Buffer-Tag-is-used"><span class="nav-number">3.</span> <span class="nav-text">3. How Buffer Tag is used</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Summary"><span class="nav-number">4.</span> <span class="nav-text">4. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

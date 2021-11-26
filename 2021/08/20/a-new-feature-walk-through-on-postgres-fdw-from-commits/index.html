@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. Overviewpostgres_fdw has been existing in PostgreSQL for many years, and it was one of the most popular interfaces used in many extensions. such as the PostgreSQL foreign data wrappers wiki page,">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How batch insertion was done in postgres_fdw">
+<meta property="og:url" content="https://idrawone.github.io/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. Overviewpostgres_fdw has been existing in PostgreSQL for many years, and it was one of the most popular interfaces used in many extensions. such as the PostgreSQL foreign data wrappers wiki page,">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi_bulk_insertion.png">
+<meta property="article:published_time" content="2021-08-20T08:00:00.000Z">
+<meta property="article:modified_time" content="2021-08-20T23:10:46.851Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi_bulk_insertion.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>How batch insertion was done in postgres_fdw | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">19</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          How batch insertion was done in postgres_fdw
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-08-20 01:00:00 / Modified: 16:10:46" itemprop="dateCreated datePublished" datetime="2021-08-20T01:00:00-07:00">2021-08-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/" itemprop="url" rel="index">
+                    <span itemprop="name">foreign data wrapper</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/" itemprop="url" rel="index">
+                    <span itemprop="name">fdw</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/" itemprop="url" rel="index">
+                    <span itemprop="name">bulk</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/insert/" itemprop="url" rel="index">
+                    <span itemprop="name">insert</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi_bulk_insertion.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>postgres_fdw has been existing in PostgreSQL for many years, and it was one of the most popular interfaces used in many extensions. such as the <a href="https://wiki.postgresql.org/wiki/Foreign_data_wrappers" target="_blank" rel="noopener">PostgreSQL foreign data wrappers wiki page</a>, and <a href="https://pgxn.org/tag/fdw/" target="_blank" rel="noopener">PostgreSQL Extension Network/PGXN</a>. However, I had not touched this postgres_fdw in deep until I got a task about combing multiple columns from multiple tables using this amazing Foreign Data Wrapper interface. After some hack, I was be able to combine multiple columns from multiple tables into one table based on postgres_fdw, but I was just curious about how many enhancements has been done recently. After a simple git pull, I found actually there are some new features was introduced in PG14, such as Asynchronous Execution, Bulk Inserts, Truncate as well as some network connection related enhancement. In this blog, I will take a detail look at one of the enhancements, i.e. Bulk insertion, to see how it was implemented.</p>
+<h4 id="2-A-detail-looks-at-bulk-insertion"><a href="#2-A-detail-looks-at-bulk-insertion" class="headerlink" title="2. A detail looks at bulk insertion"></a>2. A detail looks at bulk insertion</h4><p>I haven’t performed any benchmark test for bulk inserts in postgres_fdw to compare before and after yet, but you can find a very nice blog <a href="https://www.percona.com/blog/2021/05/27/new-features-in-postgresql-14-bulk-inserts-for-foreign-data-wrappers/" target="_blank" rel="noopener">here</a> as your reference, if I have time I will definitely run some benchmark test on a production server. For now, let’s take a look to see how it was implemented.</p>
+<p>The first commit was done early 2021, and here is the details information about this features.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">commit b663a4136331de6c7364226e3dbf7c88bfee7145</span><br><span class="line">Author: Tomas Vondra &lt;tomas.vondra@postgresql.org&gt;</span><br><span class="line">Date:   Wed Jan 20 23:05:46 2021 +0100</span><br><span class="line"></span><br><span class="line">    Implement support for bulk inserts in postgres_fdw</span><br><span class="line">    </span><br><span class="line">    Extends the FDW API to allow batching inserts into foreign tables. That</span><br><span class="line">    is usually much more efficient than inserting individual rows, due to</span><br><span class="line">    high latency for each round-trip to the foreign server.</span><br><span class="line">    </span><br><span class="line">    It was possible to implement something similar in the regular FDW API,</span><br><span class="line">    but it was inconvenient and there were issues with reporting the number</span><br><span class="line">    of actually inserted rows etc. This extends the FDW API with two new</span><br><span class="line">    functions:</span><br><span class="line">    </span><br><span class="line">    * GetForeignModifyBatchSize - allows the FDW picking optimal batch size</span><br><span class="line">    </span><br><span class="line">    * ExecForeignBatchInsert - inserts a batch of rows at once</span><br><span class="line">    </span><br><span class="line">    Currently, only INSERT queries support batching. Support for DELETE and</span><br><span class="line">    UPDATE may be added in the future.</span><br><span class="line">    </span><br><span class="line">    This also implements batching for postgres_fdw. The batch size may be</span><br><span class="line">    specified using &quot;batch_size&quot; option both at the server and table level.</span><br><span class="line">    </span><br><span class="line">    The initial patch version was written by me, but it was rewritten and</span><br><span class="line">    improved in many ways by Takayuki Tsunakawa.</span><br><span class="line">    </span><br><span class="line">    Author: Takayuki Tsunakawa</span><br><span class="line">    Reviewed-by: Tomas Vondra, Amit Langote</span><br><span class="line">    Discussion: https:&#x2F;&#x2F;postgr.es&#x2F;m&#x2F;20200628151002.7x5laxwpgvkyiu3q@development</span><br><span class="line">&#96;&#96;&#96; </span><br><span class="line"></span><br><span class="line">As the author commented, two major functions, i.e. &#96;postgresGetForeignModifyBatchSize&#96; and &#96;postgresExecForeignBatchInsert&#96; were introduced to postgres_fdw to hook up with the extended FDW API. The extended FDW API can be found in &#96;src&#x2F;include&#x2F;foreign&#x2F;fdwapi.h&#96;.</span><br><span class="line"></span><br><span class="line">The corresponding implementation was done in &#96;contrib&#x2F;postgres_fdw&#x2F;postgres_fdw.c&#96;. </span><br><span class="line">Single row insertion</span><br></pre></td></tr></table></figure>
+<p>static TupleTableSlot *<br>postgresExecForeignInsert(EState *estate,<br>                          ResultRelInfo *resultRelInfo,<br>                          TupleTableSlot *slot,<br>                          TupleTableSlot *planSlot)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vs. batch rows insertion</span><br></pre></td></tr></table></figure>
+<p>static TupleTableSlot **<br>postgresExecForeignBatchInsert(EState <em>estate,<br>                          ResultRelInfo *resultRelInfo,<br>                          TupleTableSlot *</em>slots,<br>                          TupleTableSlot **planSlots,<br>                          int *numSlots)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Function postgresExecForeignBatchInsert support multiple slots, planSlots as well as a new parameter, i.e. numSlots. So that it can insert multiple rows in one round communication to save the network communication overhead.</span><br></pre></td></tr></table></figure>
+<p>static int<br>postgresGetForeignModifyBatchSize(ResultRelInfo *resultRelInfo)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">The function basically allows to retrieve the number of row remote server will support in bulk insertion. Here, as the function has a note, if there is trigger defined for remote table with AFTER ROW or with RETURNING required, the bulk insertion is not allowed, otherwise the rule will be broken on remote server side.</span><br><span class="line"></span><br><span class="line">Other than these two major new functions, there are some update in other functions, such as, &#96;execute_foreign_modify&#96;, which will build the bulk insertion query when it received insert operation, something like below.</span><br></pre></td></tr></table></figure>
+<pre><code>if (operation == CMD_INSERT &amp;&amp; fmstate-&gt;num_slots != *numSlots)</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">and another important change is &#96;convert_prep_stmt_params&#96; which has a loop to build the number of rows that server can accept.</span><br></pre></td></tr></table></figure>
+<pre><code>for (i = 0; i &lt; numSlots; i++)</code></pre><pre><code>
+Then rest of the changes are mainly to support the bulk insertion features, such as parse the `batch_size` in option. Another new function, `rebuildInsertSql` in `deparse.c` is used in `execute_foreign_modify` to build the actual number of rows before sending the query to remote server.
+
+
+#### 3. Limitation
+
+As it was mentioned in the commit message, only insertion is supported for bulk operations, delete and update are not supported yet. Hopefully, these bulk operations and interfaces can be added soon. So that, there will be even more extensions using FDW interface in the future.
+
+
+
+#### 4. Summary
+In this blog, we discussed a key performance improvement in postgres_fdw, i.e. bulk insertion and take a detail look at the source code level. I hope it can help when someone want to add a new feature to postgres_fdw or any continue improvement on bulk insertion.
+
+
+_**Reference:**_
+1. [F.35. postgres_fdw](https://www.postgresql.org/docs/14/postgres-fdw.html)
+2. [Faster Bulk Insertion to Foreign Tables - Introduction to PostgreSQL 14 Committed Features](http://postgres-road.blogspot.com/2021/03/faster-bulk-insertion-to-foreign-tables.html)
+3. [New Features in PostgreSQL 14: Bulk Inserts for Foreign Data Wrappers](https://www.percona.com/blog/2021/05/27/new-features-in-postgresql-14-bulk-inserts-for-foreign-data-wrappers/)
+</code></pre>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/07/23/the-amazing-buffer-tag-in-PG/" rel="prev" title="The Amazing Buffer Tag in PostgreSQL">
+      <i class="fa fa-chevron-left"></i> The Amazing Buffer Tag in PostgreSQL
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/09/17/a-quick-test-for-postgres-fdw-batch-insertion/" rel="next" title="A quick test for postgres_fdw batch insertion">
+      A quick test for postgres_fdw batch insertion <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-A-detail-looks-at-bulk-insertion"><span class="nav-number">2.</span> <span class="nav-text">2. A detail looks at bulk insertion</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

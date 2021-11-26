@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewWhen I was working on some backup and recovery related features for a project based on Postgres, I noticed that there is file called backup_label. By quickly google search, you can find so">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Backup Label in PostgreSQL">
+<meta property="og:url" content="https://idrawone.github.io/2021/10/15/what-is-backup-label/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewWhen I was working on some backup and recovery related features for a project based on Postgres, I noticed that there is file called backup_label. By quickly google search, you can find so">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-backup-label.png">
+<meta property="article:published_time" content="2021-10-15T08:00:00.000Z">
+<meta property="article:modified_time" content="2021-10-15T22:35:50.149Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-backup-label.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2021/10/15/what-is-backup-label/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Backup Label in PostgreSQL | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">19</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/10/15/what-is-backup-label/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Backup Label in PostgreSQL
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-10-15 01:00:00 / Modified: 15:35:50" itemprop="dateCreated datePublished" datetime="2021-10-15T01:00:00-07:00">2021-10-15</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/basebackup/" itemprop="url" rel="index">
+                    <span itemprop="name">basebackup</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/basebackup/label/" itemprop="url" rel="index">
+                    <span itemprop="name">label</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/basebackup/label/start/" itemprop="url" rel="index">
+                    <span itemprop="name">start</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/basebackup/label/start/stop/" itemprop="url" rel="index">
+                    <span itemprop="name">stop</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/basebackup/label/start/stop/tools/" itemprop="url" rel="index">
+                    <span itemprop="name">tools</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi-backup-label.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>When I was working on some backup and recovery related features for a project based on Postgres, I noticed that there is file called <code>backup_label</code>. By quickly google search, you can find some very nice blogs or books which discussed this topic, such as, <a href="https://www.interdb.jp/pg/pgsql10.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a>, one of my favourite books. In this blog, I am going to talk it a little more based on my experience.</p>
+<h4 id="2-What-is-backup-label"><a href="#2-What-is-backup-label" class="headerlink" title="2. What is backup_label?"></a>2. What is backup_label?</h4><p>The <code>backup_label</code> is a file created in $PGDATA folder when there is an <code>exclusive backup</code> triggered by <code>pg_start_backup()</code> and the backup is in progress. This <code>backup_label</code> file will be removed once the <code>pg_stop_backup()</code> is executed. Here, the <code>exclusive backup</code> is one of the backup methods introduced to Postgres early, and as the name indicated, it does not support multiple backup activities at the same time. Because of this limitation, a frontend backup tool <code>pg_basebackup</code> is added to the Postgres later. This <code>pg_basebackup</code> client does allow multiple backup activities performed at the same time. Therefore, this kind of backup is called as <code>non-exclusive backup</code>. Both backup methods use the <code>backup_label</code> but in a different way.</p>
+<p>In exclusive basebackup, the <code>backup_label</code> will be generated automatically on the source server side. To see how this file looks like, you can run a command like, <code>select pg_start_backup(&#39;first backup&#39;);</code> from a psql console. Then you should be able to find a <code>backup_label</code> file in $PGDATA folder with the content like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">START WAL LOCATION: 0&#x2F;6000028 (file 000000010000000000000006)</span><br><span class="line">CHECKPOINT LOCATION: 0&#x2F;6000060</span><br><span class="line">BACKUP METHOD: pg_start_backup</span><br><span class="line">BACKUP FROM: master</span><br><span class="line">START TIME: 2021-10-15 13:30:03 PDT</span><br><span class="line">LABEL: first backup</span><br><span class="line">START TIMELINE: 1</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-How-does-it-work"><a href="#3-How-does-it-work" class="headerlink" title="3. How does it work?"></a>3. How does it work?</h4><p>In exclusive backup mode, the Postgres source server will generate this file when <code>pg_sart_backup()</code> is executed, and removed after <code>pg_stop_backup()</code>, however, in non-executive backup mode, such as using <code>pg_basebackup</code> client to perform a base backup, the <code>backup_label</code> is only streamed to the client side but not physical saved to the source Postgres server. </p>
+<p>As you can see in above <code>baseup_label</code> file, it contains a similar checkpoint information compared to pg_controldata file. If a backup is used in recovery with this backup_label file present, then Postgres will use the checkpoint in backup_label to start the REDO process. The reason is that there could be multiple checkpoints happening during the backup process. After the recovery process is done, this <code>backup_label</code> file will be renamed as <code>backup_label.old</code> to indelicate the recovery finished properly. In simple words, with the <code>backup_label</code> file, the database has a consistent checkpoint to recover from a proper archive.</p>
+<h4 id="4-Does-it-impact-any-frontend-tool"><a href="#4-Does-it-impact-any-frontend-tool" class="headerlink" title="4. Does it impact any frontend tool?"></a>4. Does it impact any frontend tool?</h4><p>The answer is <code>yes</code>. Some frontend tools will perform differently if a <code>backup_label</code> file is present. For example, if <code>pg_ctl</code> sees a <code>backup_label</code> file during smart shutdown process, it will wait for it to be removed by providing a waring message to the end user with something like,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">WARNING: online backup mode is active</span><br><span class="line">Shutdown will not complete until pg_stop_backup() is called</span><br></pre></td></tr></table></figure>
+<p>Another example is the frontend tool <code>pg_rewind</code> which creates a <code>backup_label</code> to force a recovery to start from the last common checkpoint. </p>
+<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I explained the <code>backup_label</code> file in Postgres. I believe the end users won’t pay attention to it most of the time, but if you do encounter some issues related with <code>backup_label</code> then I hope this blog can give you some clues.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/09/17/a-quick-test-for-postgres-fdw-batch-insertion/" rel="prev" title="A quick test for postgres_fdw batch insertion">
+      <i class="fa fa-chevron-left"></i> A quick test for postgres_fdw batch insertion
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/11/26/how-to-run-a-specific-regression-test/" rel="next" title="Backup Label in PostgreSQL">
+      Backup Label in PostgreSQL <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-What-is-backup-label"><span class="nav-number">2.</span> <span class="nav-text">2. What is backup_label?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-How-does-it-work"><span class="nav-number">3.</span> <span class="nav-text">3. How does it work?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Does-it-impact-any-frontend-tool"><span class="nav-number">4.</span> <span class="nav-text">4. Does it impact any frontend tool?</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-Summary"><span class="nav-number">5.</span> <span class="nav-text">5. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">50</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
