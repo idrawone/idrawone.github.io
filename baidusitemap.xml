@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://idrawone.github.io/2022/02/28/acquire-a-lightweight-lock-in-deep/</loc>
+    <lastmod>2022-02-28</lastmod>
+  </url>  <url>
+    <loc>https://idrawone.github.io/2022/01/28/transaction-id-and-snapshot-information-functions/</loc>
+    <lastmod>2022-01-28</lastmod>
+  </url>  <url>
     <loc>https://idrawone.github.io/2021/11/26/how-to-run-a-specific-regression-test/</loc>
-    <lastmod>2021-11-26</lastmod>
+    <lastmod>2021-11-27</lastmod>
   </url>  <url>
     <loc>https://idrawone.github.io/2021/10/15/what-is-backup-label/</loc>
     <lastmod>2021-10-15</lastmod>

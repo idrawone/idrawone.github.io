@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewI recently investigated one internal issue which was related with snapshot and found there were some changes on transaction id and snapshot information functions in PostgreSQL. Here, I am">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Transaction ID and Snapshot information functions">
+<meta property="og:url" content="https://idrawone.github.io/2022/01/28/transaction-id-and-snapshot-information-functions/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewI recently investigated one internal issue which was related with snapshot and found there were some changes on transaction id and snapshot information functions in PostgreSQL. Here, I am">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-snapshot.png">
+<meta property="article:published_time" content="2022-01-28T08:00:00.000Z">
+<meta property="article:modified_time" content="2022-01-28T23:54:23.105Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-snapshot.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2022/01/28/transaction-id-and-snapshot-information-functions/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Transaction ID and Snapshot information functions | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">21</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/01/28/transaction-id-and-snapshot-information-functions/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Transaction ID and Snapshot information functions
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-01-28 00:00:00 / Modified: 15:54:23" itemprop="dateCreated datePublished" datetime="2022-01-28T00:00:00-08:00">2022-01-28</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/transaction-id/" itemprop="url" rel="index">
+                    <span itemprop="name">transaction id</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/transaction-id/snapshot/" itemprop="url" rel="index">
+                    <span itemprop="name">snapshot</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/transaction-id/snapshot/public-function/" itemprop="url" rel="index">
+                    <span itemprop="name">public function</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi-snapshot.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>I recently investigated one internal issue which was related with snapshot and found there were some changes on transaction id and snapshot information functions in PostgreSQL. Here, I am trying to share what I have learned. </p>
+<p>Before PostgreSQL 13, all transaction id and snapshot related public functions were named as txid_xxx_yyy, such as,<br>txid_current(), which returns the current toplevel transaction ID.<br>txid_current_if_assigned(), which is similar to txid_current() but doesn’t assign a new xid if there isn’t one.<br>txid_current_snapshot(), which returns current snapshot in txid format with only top-transaction XIDs.<br>txid_status(), which reports the status of a recent transaction ID.</p>
+<p>Started from PostgreSQL 13, the naming convention of these snapshot public functions txid_xxx_yyy has been changed to something like, pg_xxx_xact_yyy correspondingly. For example, txid_current() is replaced by pg_current_xact_id(), and txid_current_if_assigned() has been renamed to pg_current_xact_id_if_assigned(), etc.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">commit 4c04be9b05ad2ec5acd27c3417bf075c13cab134 (HEAD -&gt; xid8funcs)</span><br><span class="line">Author: Thomas Munro &lt;tmunro@postgresql.org&gt;</span><br><span class="line">Date:   Tue Apr 7 11:33:56 2020 +1200</span><br><span class="line"></span><br><span class="line">    Introduce xid8-based functions to replace txid_XXX.</span><br><span class="line">    </span><br><span class="line">    The txid_XXX family of fmgr functions exposes 64 bit transaction IDs to</span><br><span class="line">    users as int8.  Now that we have an SQL type xid8 for FullTransactionId,</span><br><span class="line">    define a new set of functions including pg_current_xact_id() and</span><br><span class="line">    pg_current_snapshot() based on that.  Keep the old functions around too,</span><br><span class="line">    for now.</span><br><span class="line">    </span><br><span class="line">    It&#39;s a bit sneaky to use the same C functions for both, but since the</span><br><span class="line">    binary representation is identical except for the signedness of the</span><br><span class="line">    type, and since older functions are the ones using the wrong signedness,</span><br><span class="line">    and since we&#39;ll presumably drop the older ones after a reasonable period</span><br><span class="line">    of time, it seems reasonable to switch to FullTransactionId internally</span><br><span class="line">    and share the code for both.</span><br></pre></td></tr></table></figure>
+
+<p>Introduce xid8-based functions to replace txid_XXX.</p>
+<p>An official documentation regarding these functions can be found at <a href="https://www.postgresql.org/docs/14/functions-info.html" target="_blank" rel="noopener">Transaction ID and Snapshot Information Functions</a> at Table 9.76. Transaction ID and Snapshot Information Functions.</p>
+<h4 id="2-how-to-use-snapshot-public-functions"><a href="#2-how-to-use-snapshot-public-functions" class="headerlink" title="2. how to use snapshot public functions"></a>2. how to use snapshot public functions</h4><p>Since PostgreSQL has provided us so many public functions for end users to check the transaction id and snapshot information in details, sometimes, we need to know how to use these funtions in a simple query to have better understanding of the ongoing transactions, visibilities, and snapshots. Here, I have some simple examples to share.</p>
+<p>first, let’s create a simple table like below,<br>postgres=# create table tbl01 (a int, b text);<br>CREATE TABLE</p>
+<p>to find out the current transaction id, you can simply do <code>select pg_current_xact_id();</code> in a psql console,<br>postgres=# select pg_current_xact_id();<br> pg_current_xact_id </p>
+<hr>
+<pre><code>734</code></pre><p>(1 row)<br>Here, the number 734 is the current transaction id. Each time, when you run such a query, the transaction id will increase by one.</p>
+<p>postgres=# select pg_current_xact_id();<br> pg_current_xact_id </p>
+<hr>
+<pre><code>735</code></pre><p>(1 row)</p>
+<p>If you want to know the current transaction id, then use function <code>pg_current_xact_id_if_assigned()</code>. Obversely, as the document indicated, if you are not within a transaction, this function won’t return any transaction id.<br>postgres=# select pg_current_xact_id_if_assigned();<br> pg_current_xact_id_if_assigned </p>
+<hr>
+<p>(1 row)</p>
+<p>However, if start a transaction with begin, followed a simple insert query like below, and then run the function <code>pg_current_xact_id_if_assigned()</code> again, you should be able to find out your current transaction id.<br>postgres=# begin ;<br>BEGIN<br>postgres=<em># insert into tbl01 values(1,’hello world’);<br>INSERT 0 1<br>postgres=</em># select pg_current_xact_id_if_assigned();<br> pg_current_xact_id_if_assigned </p>
+<hr>
+<pre><code>736</code></pre><p>(1 row)</p>
+<p>The function <code>pg_current_snapshot()</code> will return current top level snapshot in a format like, <code>xmin:xmax:xid1,xid2</code>. For example,<br>postgres=*#  select pg_current_snapshot();<br> pg_current_snapshot </p>
+<hr>
+<p> 736:736:<br>(1 row<br>In this case, the PostgreSQL server has only one ongoing transaction which is 736.   </p>
+<p>One of the use cases for end user is that a user may want to check the tuples visibilities using pg_current_snapshot and pg_current_xact_id_if_assigned. For example, start two psql consoles with begin and followed by one simple insert operation, then check the current transaction id and current snapshots.</p>
+<p>postgres=*# select pg_current_xact_id_if_assigned();<br> pg_current_xact_id_if_assigned </p>
+<hr>
+<pre><code>736</code></pre><p>(1 row)</p>
+<p>postgres=*#  select pg_current_snapshot();<br> pg_current_snapshot </p>
+<hr>
+<p> 736:739:737<br>(1 row)<br>In the first console, it tells that the current transactions id is 736, and there is another ongoing transaction 737 and any tuples update made by transaction 737 is not visibile to this console yet.</p>
+<p>postgres=*# select pg_current_xact_id_if_assigned();<br> pg_current_xact_id_if_assigned </p>
+<hr>
+<pre><code>737</code></pre><p>(1 row)</p>
+<p>postgres=*# select pg_current_snapshot();<br> pg_current_snapshot </p>
+<hr>
+<p> 736:739:736<br>(1 row)</p>
+<p>If you check the assigned transaction id and current snapshot in the second console, it will tell you a similar information. With these two public fucntions and plus an extension pageinspect, it can help debug the tuple visibilities issue.</p>
+<h4 id="3-Summary"><a href="#3-Summary" class="headerlink" title="3. Summary"></a>3. Summary</h4><p>In this blog, we discussed the changes made for those transaction id and snapshot public functions, and shared a few simple queries about how to use these snapshots related public funtions. It might be useful if you want to have a better understanding of the ongoing transactions and snapshots.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/11/26/how-to-run-a-specific-regression-test/" rel="prev" title="How to run a specific regression test">
+      <i class="fa fa-chevron-left"></i> How to run a specific regression test
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/02/28/acquire-a-lightweight-lock-in-deep/" rel="next" title="Acquire a Lightweight lock in deep">
+      Acquire a Lightweight lock in deep <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-how-to-use-snapshot-public-functions"><span class="nav-number">2.</span> <span class="nav-text">2. how to use snapshot public functions</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Summary"><span class="nav-number">3.</span> <span class="nav-text">3. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">56</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
