@@ -48,17 +48,17 @@
 
   <meta name="description" content="1. OverviewPostgreSQL is one of the greatest open source databases, not only because of the extensibility and SQL compliance but also the evolution of new features. For example, in postgres_fdw, ther">
 <meta property="og:type" content="article">
-<meta property="og:title" content="parallel commit for postgres fdw">
+<meta property="og:title" content="parallel commit in postgres fdw">
 <meta property="og:url" content="https://idrawone.github.io/2022/03/31/parallel-abort-in-postgres-fdw/index.html">
 <meta property="og:site_name" content="David&#39;s Blog">
 <meta property="og:description" content="1. OverviewPostgreSQL is one of the greatest open source databases, not only because of the extensibility and SQL compliance but also the evolution of new features. For example, in postgres_fdw, ther">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://idrawone.github.io/images/img/fi-lwlock.png">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-parallel-commit.png">
 <meta property="article:published_time" content="2022-03-31T08:00:00.000Z">
-<meta property="article:modified_time" content="2022-03-31T20:59:55.802Z">
+<meta property="article:modified_time" content="2022-04-05T18:19:37.909Z">
 <meta property="article:author" content="David Zhang">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-lwlock.png">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-parallel-commit.png">
 
 <link rel="canonical" href="https://idrawone.github.io/2022/03/31/parallel-abort-in-postgres-fdw/">
 
@@ -72,7 +72,7 @@
   };
 </script>
 
-  <title>parallel commit for postgres fdw | David's Blog</title>
+  <title>parallel commit in postgres fdw | David's Blog</title>
   
 
 
@@ -191,7 +191,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          parallel commit for postgres fdw
+          parallel commit in postgres fdw
         </h1>
 
         <div class="post-meta">
@@ -200,10 +200,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">Posted on</span>
-              
 
-              <time title="Created: 2022-03-31 01:00:00 / Modified: 13:59:55" itemprop="dateCreated datePublished" datetime="2022-03-31T01:00:00-07:00">2022-03-31</time>
+              <time title="Created: 2022-03-31 01:00:00" itemprop="dateCreated datePublished" datetime="2022-03-31T01:00:00-07:00">2022-03-31</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2022-04-05 11:19:37" itemprop="dateModified" datetime="2022-04-05T11:19:37-07:00">2022-04-05</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="fa fa-folder-o"></i>
@@ -245,21 +251,23 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p><img src="/images/img/fi-lwlock.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is one of the greatest open source databases, not only because of the extensibility and SQL compliance but also the evolution of new features. For example, in postgres_fdw, there is a new feature about <code>parallel commit</code> has been added the main branch and will be released in PG15. This blog is for a quick taste of this new feature.</p>
-<h4 id="2-how-to-use-snapshot-public-functions"><a href="#2-how-to-use-snapshot-public-functions" class="headerlink" title="2. how to use snapshot public functions"></a>2. how to use snapshot public functions</h4><p>If you are PostgreSQL developer or if your internal database is somehow originated from the PostgreSQL, and especially you have some applicatios which are related with the extension postgres_fdw, then you might take a look for this <code>parallel commit</code> feature. This new feature is committed a month ago. It may help you on solving some performence issues, or at least worth to take a look if you plan any parallel features in your postgres_fdw like solution.</p>
+        <p><img src="/images/img/fi-parallel-commit.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is one of the greatest open source databases, not only because of the extensibility and SQL compliance but also the evolution of new features. For example, in postgres_fdw, there is a new feature <code>parallel commit</code> has been added into the main branch and will be released in PG15. This blog is for a quick taste of this new feature.</p>
+<h4 id="2-how-parallel-commit-works"><a href="#2-how-parallel-commit-works" class="headerlink" title="2. how parallel commit works"></a>2. how parallel commit works</h4><p>If you are a PostgreSQL database developer or if your internal database is built based on PostgreSQL database, and especially you have some applications which are related with the extension <code>postgres_fdw</code>, then you might wnat to take a look at this <code>parallel commit</code> feature. This new feature is committed just a month ago. It may help you on solving some performance issues, or as a reference if you are planning to build any parallel features on a postgres_fdw based solution. Here is the details about this <code>parallel commit</code> for postgres_fdw.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">commit 04e706d4238f98a98e1c0b1a02db9d4280b96f04</span><br><span class="line">Author: Etsuro Fujita &lt;efujita@postgresql.org&gt;</span><br><span class="line">Date:   Thu Feb 24 14:30:00 2022 +0900</span><br><span class="line"></span><br><span class="line">    postgres_fdw: Add support for parallel commit.</span><br><span class="line">    </span><br><span class="line">    postgres_fdw commits remote (sub)transactions opened on remote server(s)</span><br><span class="line">    in a local (sub)transaction one by one when the local (sub)transaction</span><br><span class="line">    commits.  This patch allows it to commit the remote (sub)transactions in</span><br><span class="line">    parallel to improve performance.  This is enabled by the server option</span><br><span class="line">    &quot;parallel_commit&quot;.  The default is false.</span><br></pre></td></tr></table></figure>
 
-<p>By default, this parallel commit feature is turnned off. If you want to try it you can simply turn it on by </p>
+<p>By default, this parallel commit feature is turned off. If you want to try it you can simply turn it on by </p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ALTER SERVER loopback OPTIONS (ADD parallel_commit &#39;true&#39;);</span><br></pre></td></tr></table></figure>
-<p>Once this paralle commit option is on for those foreign servers involved in a local transaction, when the local transaction commit, the opened remote transaction on those foreign servers will be committed in parallel. By providing this option, we expect some performence improvement when multiple foreign servers involved in a transaction. This feature can be useful for some distributed database clusters application using Postgre_fdw.</p>
-<p>To verify the performence, you can simply test it for before and after using below commands,</p>
+<p>Once this <code>parallel commit</code> option is on for those foreign servers involved in a local transaction and when this local transaction commits, the opened remote transaction on those foreign servers will be committed in parallel. By providing this option, PostgreSQL community expects some performance improvement when multiple foreign servers involved in a transaction. This parallel commit feature can be useful for some applications on distributed PostgreSQL database clusters using postgre_fdw.</p>
+<p>To verify the performance improvement, you can simply test it for before and after using below commands,</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">psql -d postgres -p 5432 -Atq &lt;&lt;EOT</span><br><span class="line">\timing on</span><br><span class="line">BEGIN;</span><br><span class="line">SAVEPOINT s;</span><br><span class="line">INSERT INTO ft1 VALUES (10, 10);</span><br><span class="line">INSERT INTO ft2 VALUES (20, 20);</span><br><span class="line">RELEASE SAVEPOINT s;</span><br><span class="line">COMMIT;</span><br><span class="line">EOT</span><br></pre></td></tr></table></figure>
 
-<p>According to the initial discussion early for the paralle commit feature, below are some numbers for your reference.</p>
+<p>According to the initial discussion for this <code>parallel commit</code> feature, below are some performance numbers for your reference.</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">* RELEASE</span><br><span class="line">  parallel_commit&#x3D;0: 0.385 ms</span><br><span class="line">  parallel_commit&#x3D;1: 0.221 ms</span><br><span class="line"></span><br><span class="line">* COMMIT</span><br><span class="line">  parallel_commit&#x3D;0: 1.660 ms</span><br><span class="line">  parallel_commit&#x3D;1: 0.861 ms</span><br></pre></td></tr></table></figure>
-<p>To disable this feature, you can the command,</p>
+
+<p>To disable this feature, you can run a command like below,</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ALTER SERVER loopback OPTIONS (DROP parallel_commit);</span><br></pre></td></tr></table></figure>
+
 
 <h4 id="3-Summary"><a href="#3-Summary" class="headerlink" title="3. Summary"></a>3. Summary</h4><p>In this blog, we discussed the parallel commit feature recently added to postgres_fdw. When you apply this feature to your production servers you might need to be careful as it is mentioned in the document, <code>this option might increase the remote server’s load when the local (sub)transaction commits</code>. </p>
 
@@ -340,7 +348,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-how-to-use-snapshot-public-functions"><span class="nav-number">2.</span> <span class="nav-text">2. how to use snapshot public functions</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Summary"><span class="nav-number">3.</span> <span class="nav-text">3. Summary</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-how-parallel-commit-works"><span class="nav-number">2.</span> <span class="nav-text">2. how parallel commit works</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Summary"><span class="nav-number">3.</span> <span class="nav-text">3. Summary</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
