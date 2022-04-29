@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">22</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">23</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,169 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/02/03/how-to-setup-wal-streaming-replication-for-postgresql13/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/02/03/how-to-setup-wal-streaming-replication-for-postgresql13/" class="post-title-link" itemprop="url">How to setup Postgres 13 WAL streaming replication on Ubuntu 18.04</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-02-03 00:00:00 / Modified: 11:59:44" itemprop="dateCreated datePublished" datetime="2021-02-03T00:00:00-08:00">2021-02-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/WAL/" itemprop="url" rel="index">
+                    <span itemprop="name">WAL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/WAL/Streaming/" itemprop="url" rel="index">
+                    <span itemprop="name">Streaming</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/WAL/Streaming/Replication/" itemprop="url" rel="index">
+                    <span itemprop="name">Replication</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-wal-streaming.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL supports different type of replications, i.e. logical and physical. There are many tutorials discussed about the replications. This blog is a simply walk-through of the WAL Streaming replication using the latest Postgresql-13 on Ubuntu 18.04.</p>
+<h4 id="2-Install-Postgresql-13-from-source-code"><a href="#2-Install-Postgresql-13-from-source-code" class="headerlink" title="2. Install Postgresql-13 from source code"></a>2. Install Postgresql-13 from source code</h4><p>In this blog, we will install Postgresql from the source code, so that this environment can be used for later development. Simply prepare two Ubuntu 18.04 using VirtualBox with below <a href="/images/img/wal-streaming-net.png">Network settings</a>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Primary: 192.168.0.181</span><br><span class="line">Standby: 192.168.0.182</span><br></pre></td></tr></table></figure>
+
+<p>It is pretty simple to install postgres from source code. Here we checkout the Postgresql-13 stable branch from github.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ mkdir sandbox</span><br><span class="line">$ cd sandbox&#x2F;</span><br><span class="line">$ git clone https:&#x2F;&#x2F;github.com&#x2F;postgres&#x2F;postgres</span><br><span class="line">$ cd postgres&#x2F;</span><br><span class="line">$ git checkout REL_13_STABLE</span><br></pre></td></tr></table></figure>
+
+<p>Install the basic build environment on Ubuntu 18.04 and then compile and install Postgres by using below commands,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sudo apt install -y pkg-config build-essential libreadline-dev bison flex</span><br><span class="line">$ .&#x2F;configure --prefix&#x3D;$HOME&#x2F;sandbox&#x2F;postgres --enable-debug CFLAGS&#x3D;&#39;-ggdb -O0&#39;</span><br><span class="line">$ make clean &amp;&amp; make &amp;&amp; make install</span><br></pre></td></tr></table></figure>
+
+<p>Setup the environment for Postgres database, for example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export PGDATA&#x3D;$HOME&#x2F;sandbox&#x2F;pgdata</span><br><span class="line">export PATH&#x3D;$HOME&#x2F;sandbox&#x2F;pgapp&#x2F;bin:$PATH</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-Setup-Primary-Server"><a href="#3-Setup-Primary-Server" class="headerlink" title="3. Setup Primary Server"></a>3. Setup Primary Server</h4><p>In order to setup the WAL streaming replication, first, let’s create a new database by running the command below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">initdb -D $PGDATA</span><br></pre></td></tr></table></figure>
+
+<p>then we need to add the permission to <code>pg_hba.conf</code> file to enable a Standby server to access a Primary server.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host   replication   all   192.168.0.182&#x2F;32   trust</span><br></pre></td></tr></table></figure>
+
+<p>and then update <code>postgresql.conf</code> file to let the Primary server listen on all network interface so that a standby can connect to it.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">listen_addresses &#x3D; &#39;*&#39;</span><br><span class="line"></span><br><span class="line">synchronous_standby_names &#x3D; &#39;*&#39;</span><br></pre></td></tr></table></figure>
+
+<p>After all the changes changes, we can start the Primary server,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pg_ctl -D $PGDATA -l &#x2F;tmp&#x2F;logfile start</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-Setup-Standby-Server"><a href="#4-Setup-Standby-Server" class="headerlink" title="4. Setup Standby Server"></a>4. Setup Standby Server</h4><p>Once the Primary server is up, we need to create a backup base. This can be done on either Primary side or Standby side. Below is the command we can run on Standby server directly.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pg_basebackup --pgdata&#x3D;$PGDATA --format&#x3D;p --write-recovery-conf --checkpoint&#x3D;fast --label&#x3D;mffb --progress --host&#x3D;192.168.0.181 --port&#x3D;5432 --username&#x3D;vbox1804</span><br></pre></td></tr></table></figure>
+
+<p>At this point, most of the tutorial will discuss about the <code>recovery.conf</code> setup. However, PG has removed <code>recovery.conf</code> file and merged the corresponding configuration to <code>postgresql.conf</code>. Without knowing this, if you simply follow some old tutorials, you may get an error like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">FATAL:  using recovery command file &quot;recovery.conf&quot; is not supported</span><br></pre></td></tr></table></figure>
+
+<p>The reason is that the <code>recovery.conf</code> has been removed and the relevant configuration has been merged into <code>postgresql.conf</code>. For details, please check the commit below.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">commit 2dedf4d9a899b36d1a8ed29be5efbd1b31a8fe85</span><br><span class="line">Author: Peter Eisentraut &lt;peter_e@gmx.net&gt;</span><br><span class="line">Date:   Sun Nov 25 16:31:16 2018 +0100</span><br><span class="line"></span><br><span class="line">    Integrate recovery.conf into postgresql.conf</span><br><span class="line">    </span><br><span class="line">    recovery.conf settings are now set in postgresql.conf (or other GUC</span><br><span class="line">    sources).  Currently, all the affected settings are PGC_POSTMASTER;</span><br><span class="line">    this could be refined in the future case by case.</span><br><span class="line">    </span><br><span class="line">    Recovery is now initiated by a file recovery.signal.  Standby mode is</span><br><span class="line">    initiated by a file standby.signal.  The standby_mode setting is</span><br><span class="line">    gone.  If a recovery.conf file is found, an error is issued.</span><br><span class="line">    </span><br><span class="line">    The trigger_file setting has been renamed to promote_trigger_file as</span><br><span class="line">    part of the move.</span><br><span class="line">    </span><br><span class="line">    The documentation chapter &quot;Recovery Configuration&quot; has been integrated</span><br><span class="line">    into &quot;Server Configuration&quot;.</span><br><span class="line">    </span><br><span class="line">    pg_basebackup -R now appends settings to postgresql.auto.conf and</span><br><span class="line">    creates a standby.signal file.</span><br><span class="line">    </span><br><span class="line">    Author: Fujii Masao &lt;masao.fujii@gmail.com&gt;</span><br><span class="line">    Author: Simon Riggs &lt;simon@2ndquadrant.com&gt;</span><br><span class="line">    Author: Abhijit Menon-Sen &lt;ams@2ndquadrant.com&gt;</span><br><span class="line">    Author: Sergei Kornilov &lt;sk@zsrv.org&gt;</span><br><span class="line">    Discussion: https:&#x2F;&#x2F;www.postgresql.org&#x2F;message-id&#x2F;flat&#x2F;607741529606767@web3g.yandex.ru&#x2F;</span><br></pre></td></tr></table></figure>
+
+
+<p>Now, let’s just make a simple change for some basic parameters to Standby Server <code>postgresql.conf</code> file.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">primary_conninfo &#x3D; &#39;host&#x3D;192.168.0.181 port&#x3D;5432 user&#x3D;xbox1804 password&#x3D;mypassword&#39; # connection string to sending server</span><br><span class="line">primary_slot_name &#x3D; &#39;standby1_slot&#39;     # replication slot on sending server</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="5-Create-replication-slot-on-Primary-Server"><a href="#5-Create-replication-slot-on-Primary-Server" class="headerlink" title="5. Create replication slot on Primary Server"></a>5. Create replication slot on Primary Server</h4><p>In order to allow the Standby to connect to Primary, we need to create the corresponding replication slot like below.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# select * from pg_create_physical_replication_slot(&#39;standby1_slot&#39;);</span><br><span class="line">   slot_name   | lsn </span><br><span class="line">---------------+-----</span><br><span class="line"> standby1_slot | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select slot_name, slot_type, active, wal_status from pg_replication_slots;</span><br><span class="line">   slot_name   | slot_type | active | wal_status </span><br><span class="line">---------------+-----------+--------+------------</span><br><span class="line"> standby1_slot | physical  | f      | </span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="6-Start-Standby-Server"><a href="#6-Start-Standby-Server" class="headerlink" title="6. Start Standby Server"></a>6. Start Standby Server</h4><p>Once the replication slot has been created i.e. ‘standby1_slot’, let’s start the Standby server.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pg_ctl -D $PGDATA -l &#x2F;tmp&#x2F;logfile start</span><br></pre></td></tr></table></figure>
+
+<p>If the Standby server is setup properly, then you should see below message from the log file.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LOG:  started streaming WAL from primary at 0&#x2F;3000000 on timeline 1</span><br></pre></td></tr></table></figure>
+
+<p>Now, if you check the replication slot on Primary server again, you should see the replication slot is <code>active</code> and the <code>wal_status</code> has been changed to <code>reserved</code>.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# select slot_name, slot_type, active, wal_status from pg_replication_slots;</span><br><span class="line">   slot_name   | slot_type | active | wal_status </span><br><span class="line">---------------+-----------+--------+------------</span><br><span class="line"> standby1_slot | physical  | t      | reserved</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="7-Test-WAL-Streaming-replication"><a href="#7-Test-WAL-Streaming-replication" class="headerlink" title="7. Test WAL Streaming replication"></a>7. Test WAL Streaming replication</h4><p>After all the settings has been done properly, we can start a simple test to verify the wal streaming replication setup.<br>First, let’s check if there is any relations on Primary server, for example,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# \d</span><br><span class="line">Did not find any relations.</span><br></pre></td></tr></table></figure>
+
+<p>You can do the same check on Standby server side. After that, let’s create a table on Primary server,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create table tbl1(id int, text varchar(10));</span><br><span class="line">CREATE TABLE</span><br><span class="line">postgres&#x3D;# \d</span><br><span class="line">        List of relations</span><br><span class="line"> Schema | Name | Type  |  Owner   </span><br><span class="line">--------+------+-------+----------</span><br><span class="line"> public | tbl1 | table | vbox1804</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+
+<p>Then simply insert one record like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# insert into tbl1 values (1, &#39;helloworld&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line">postgres&#x3D;# select * from tbl1;</span><br><span class="line"> id |    text    </span><br><span class="line">----+------------</span><br><span class="line">  1 | helloworld</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+
+
+<p>Now, if you check on the Standby server, you should be able to see the table and a record have been replicated.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# \d</span><br><span class="line">Did not find any relations.</span><br><span class="line">postgres&#x3D;# \d</span><br><span class="line">        List of relations</span><br><span class="line"> Schema | Name | Type  |  Owner   </span><br><span class="line">--------+------+-------+----------</span><br><span class="line"> public | tbl1 | table | vbox1804</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from tbl1;</span><br><span class="line"> id |    text    </span><br><span class="line">----+------------</span><br><span class="line">  1 | helloworld</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="8-Summary"><a href="#8-Summary" class="headerlink" title="8. Summary"></a>8. Summary</h4><p>This blog simply walk-through a very basic WAL streaming replication, if you want to know more about the replication, you can always check it out on <a href="https://www.postgresql.org/docs/13/runtime-config-replication.html" target="_blank" rel="noopener">Postgresql official website</a>.</p>
+<p><em><strong>Reference:</strong></em> </p>
+<p><a href="https://wiki.postgresql.org/wiki/Binary_Replication_Tutorial" target="_blank" rel="noopener">1. Database World</a> </p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1437,232 +1600,6 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part-1: how to setup Kerberos on Ubuntu</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-
-              <time title="Created: 2020-03-11 06:00:00" itemprop="dateCreated datePublished" datetime="2020-03-11T06:00:00-07:00">2020-03-11</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-17 18:13:18" itemprop="dateModified" datetime="2020-03-17T18:13:18-07:00">2020-03-17</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/" itemprop="url" rel="index">
-                    <span itemprop="name">Kerberos</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/" itemprop="url" rel="index">
-                    <span itemprop="name">GSSAPI</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/" itemprop="url" rel="index">
-                    <span itemprop="name">Authentication</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/" itemprop="url" rel="index">
-                    <span itemprop="name">Ubuntu</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi-part1.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL supports many secure ways to authenticate users, and one typical way is to use GSSAPI with Kerberos. However, when I was trying to investigate one issue which is related with GSSAPI in PostgreSQL, I couldn’t find a tutorial that I can follow to setup the environment easily. After some effort spent on Kerberos environment setup, I decided to write a blog to share what I have learned.</p>
-<p>Since PostgreSQL GSSAPI user authentication does involve many background knowledge, I separate this blog into 3 parts: </p>
-<ul>
-<li>part-1 will be focusing on the basic concepts used in Kerberos, Servers/Clients/Services/Users setup, and environment verification;</li>
-<li>part-2 will discuss all related configuration files required on PostgreSQL for using GSSAPI user authentication;</li>
-<li>part-3 will explain how to check GSSAPI authentication, encryption and user principal information for different connection options to have a better understanding about GSSAPI on PostgreSQL.</li>
-</ul>
-<h4 id="2-Basic-Concepts-for-Kerberos"><a href="#2-Basic-Concepts-for-Kerberos" class="headerlink" title="2. Basic Concepts for Kerberos"></a>2. Basic Concepts for Kerberos</h4><p>Kerberos is a network authentication protocol, which is designed to allow users to prove their identities over a non-secure network in a secure manner. This protocol is an industry-standard protocol for secure authentication with the messages designed to against spying and replay attacks. It has been built into a wide range of software such as, Chrome, Firefox, OpenSSH, Putty, OpenLDAP, Thunderbird and PostgreSQL etc. There are some open source implementations available such as, <a href="https://github.com/krb5/krb5.git" target="_blank" rel="noopener">krb5</a> implemented by MIT used by most of the Unix-like Operating Systems, and <a href="https://github.com/heimdal/heimdal" target="_blank" rel="noopener">heimdal</a> used by OSX. Before dive into any detailed environment setup, some key concepts used in Kerberos need to be explained here.</p>
-<p><strong>Realm</strong>: Realm is equivalent to a domain or a group that all the users and servers belong to. It is required during Kerberos installation. For example, <code>HIGHGO.CA</code>, will be used as the Realm in this blog (change it according to your needs).</p>
-<p><strong>Principal</strong>: any users and services are defined as a principal in Kerberos. For example, <code>david</code>, <code>postgres</code>, <code>postgres/pg.highgo.ca</code> etc.</p>
-<p><strong>Instance</strong>: Kerberos uses Instance to manage service principals and especially for administrative principals. For example, <code>root/admin</code> where <code>root</code> is the principal and <code>/admin</code> is the instance.</p>
-<p><strong>SS</strong>: <strong>S</strong>ervice <strong>S</strong>erver provides the services. For example, <code>pg.highgo.ca</code> is a server provide PostgreSQL database access service.</p>
-<p><strong>KDC</strong>: <strong>K</strong>ey <strong>D</strong>istribution <strong>C</strong>enter contains one database of all principals and two components:</p>
-<ul>
-<li><strong>AS</strong>: <strong>A</strong>uthentication <strong>S</strong>erver is responsible for the initial authentication request from users triggered by <code>kinit</code>.</li>
-<li><strong>TGS</strong>: <strong>T</strong>icket <strong>G</strong>ranting <strong>S</strong>erver assigns the requested resource on a Service Server to the users. In this blog, both <strong>AS</strong> and <strong>TGS</strong> are all deployed on the same <strong>KDC</strong> server, i.e. <code>kdc.highgo.ca</code>.</li>
-</ul>
-<p><strong>TGT</strong>: <strong>T</strong>icket <strong>G</strong>ranting <strong>T</strong>icket is a message used to confirm the identity of the principals and to deliver session keys which is used for future secured communication among user, TGS, and SS.</p>
-<p><strong>Keytab</strong>: a file extracted from the KDC principal database and contains the encryption key for a service or host. For example, <code>postgres.keytab</code> is the keytab file and will be used on PostgreSQL server, i.e. <code>hg.highgo.ca</code>.</p>
-<p><strong>Client</strong>: a workstation needs to access a Service Server. For example, <code>psql</code> running on a Client machine and want to connect to PostgreSQL server.</p>
-<h4 id="3-Kerberos-environment-setup"><a href="#3-Kerberos-environment-setup" class="headerlink" title="3. Kerberos environment setup"></a>3. Kerberos environment setup</h4><p><img src="/images/img/gssapi-diagram.png" alt="GSSAPI Diagram"><br>When PostgreSQL authenticates a user with Kerberos, the overall processes in above diagram can be interpreted in below order. </p>
-<ul>
-<li><strong>Client</strong> initiates the authentication process, <strong>AS</strong> sends Client a <em>temporary session key</em> (<em>grey key</em>) encrypted with Client’s key (<em>blue key</em>); </li>
-<li><strong>Client</strong> uses the <em>temporary session key</em> to request services, <strong>TGS</strong> grants the services and sends two copies of the <em>communication session keys</em> (<em>yellow key</em>): one encrypted using <em>temporary session key</em> and another encrypted using Service Server’s key (<em>green key</em>); </li>
-<li><strong>Client</strong> forwards the <em>communication session key</em>  to <strong>Service Server(PG)</strong> to confirm the user authentication. If it succeeded then both Client and Service Server will use the <em>communication session key</em> for the rest of the communication. </li>
-</ul>
-<p>The realm, hostnames, and IP addresses used in this diagram are list below.</p>
-<ul>
-<li><strong>Realm:</strong> HIGHGO.CA</li>
-<li><strong>KDC (AS+TGS):</strong> kdc.highgo.ca (192.168.0.101)</li>
-<li><strong>Service Server (Postgres Server):</strong> pg.highgo.ca (192.168.0.102)</li>
-<li><strong>Client (psql):</strong> client (192.168.0.103)</li>
-</ul>
-<p>In the following sections, we will discuss the setup in details. Here is the list of all the steps.</p>
-<ol>
-<li>setup hostname and IP addresses for each machine</li>
-<li>install Kerberos server packages on KDC server machine</li>
-<li>add admin principal to KDC server</li>
-<li>install Kerberos client packages on Client and Service server machine</li>
-<li>add Service server principal to KDC server</li>
-<li>add Client principal to KDC server</li>
-<li>verify principal on Service server machine</li>
-<li>verify principal on Client machine</li>
-</ol>
-<h5 id="3-1-Hostname-and-IP-addresses"><a href="#3-1-Hostname-and-IP-addresses" class="headerlink" title="3.1. Hostname and IP addresses"></a>3.1. Hostname and IP addresses</h5><p>Because Kerberos protocol has a timestamp involved, all three machines need to have the clock to be synchronized at all the time. This can be done by setup an NTP client pointing some NTP servers in a production environment, but for simple, you can set all three machines in the same time zone with Internet connected. If you don’t have a DNS server ready or if you don’t want to use DNS, then you can manually set up the hostname by performing below commands on a Unix-like machine.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo vim &#x2F;etc&#x2F;hostname</span><br></pre></td></tr></table></figure>
-<p>Set <code>kdc</code>, <code>pg</code> and <code>client</code> accordingly to KDC, Service Server and Client machines</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo vim &#x2F;etc&#x2F;hosts</span><br></pre></td></tr></table></figure>
-<p>Set below information to <code>/etc/hosts</code> for all three machines (change the hostname and IP addresses to fit your environment). </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">192.168.0.101	kdc.highgo.ca		kdc</span><br><span class="line">192.168.0.102	pg.highgo.ca		pg</span><br><span class="line">192.168.0.103	client.highgo.ca	client</span><br></pre></td></tr></table></figure>
-<p>After the setup for all three machines are done, restart all three machines.</p>
-<h5 id="3-2-KDC-server-installation"><a href="#3-2-KDC-server-installation" class="headerlink" title="3.2. KDC server installation"></a>3.2. KDC server installation</h5><p>To setup Kerberos on KDC machine, two packages, i.e. <code>krb5-kdc</code> and <code>krb5-admin-server</code> need to be installed.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo apt install krb5-kdc krb5-admin-server</span><br></pre></td></tr></table></figure>
-<p>During the installation, the Kerberos will first ask for configuration of the realm. If you have the hosts setup already following about steps, then the realm will automatically show up, then simply click OK.<br><img src="/images/img/gssapi-realm.png" alt="Kerberos Realm"></p>
-<p>Then it will ask to configure the Kerberos server, in our case, enter <code>kdc.highgo.ca</code><br><img src="/images/img/gssapi-kerberos-server.png" alt="Kerberos Server"></p>
-<p>And then ask for the administrative server, in our case, again, <code>kdc.highgo.ca</code><br><img src="/images/img/gssapi-admin-server.png" alt="Kerberos Admin Server"></p>
-<p>In the last step, it will remind you to use <code>krb5_newrealm</code> to setup the realm. Simply click OK.<br><img src="/images/img/gssapi-kerberos-ok.png" alt="Kerberos OK"></p>
-<p>Now, let’s run the <code>krb5_newrealm</code> with sudo to set up the master key for KDC database.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ sudo krb5_newrealm</span><br><span class="line">Enter KDC database master key: </span><br><span class="line">Re-enter KDC database master key to verify:</span><br></pre></td></tr></table></figure>
-
-<p>Before start the Kerberos configuration, here are some basic kerberos tools need to know.</p>
-<ul>
-<li>kadmin.local: KDC database administration tool used manage principal and policy.</li>
-<li>kinit: used to obtain and cache Kerberos ticket-granting ticket.</li>
-<li>klist: used to list principal and tickets held in a credentials cache, or the keys held in a keytab file.</li>
-<li>ktutil: used to read, write, or edit entries in a keytab.</li>
-<li>…</li>
-</ul>
-<h5 id="3-3-Admin-Principal-setup"><a href="#3-3-Admin-Principal-setup" class="headerlink" title="3.3. Admin Principal setup"></a>3.3. Admin Principal setup</h5><p>Once KDC server has been installed, we need to create an admin user to manage principals, and it is recommended to use a different username. In our case, <code>root/admin</code>. Below are the commands used for the setup.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ sudo kadmin.local</span><br><span class="line">Authenticating as principal root&#x2F;admin@HIGHGO.CA with password.</span><br><span class="line">kadmin.local:  addprinc root&#x2F;admin</span><br><span class="line">WARNING: no policy specified for root&#x2F;admin@HIGHGO.CA; defaulting to no policy</span><br><span class="line">Enter password for principal &quot;root&#x2F;admin@HIGHGO.CA&quot;: </span><br><span class="line">Re-enter password for principal &quot;root&#x2F;admin@HIGHGO.CA&quot;: </span><br><span class="line">Principal &quot;root&#x2F;admin@HIGHGO.CA&quot; created.</span><br><span class="line">kadmin.local:  exit</span><br></pre></td></tr></table></figure>
-<p>You can check the principal <code>root/admin</code> by running <code>listprincs root/admin</code>.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kadmin.local:  listprincs root&#x2F;admin</span><br><span class="line">root&#x2F;admin@HIGHGO.CA</span><br></pre></td></tr></table></figure>
-
-<p>Next, we need to assign the appropriate access control list to the admin user in the Kerberos configuration file <code>/etc/krb5kdc/kadm5.acl</code> which is used to manage access rights to the Kerberos database.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ sudo vim &#x2F;etc&#x2F;krb5kdc&#x2F;kadm5.acl</span><br><span class="line">root&#x2F;admin@HIGHGO.CA    *</span><br></pre></td></tr></table></figure>
-<p>The above configuration gives all privileges to admin principal <code>root/admin</code>.</p>
-<p>Now, finally it is time to restart Kerberos service.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo systemctl restart krb5-admin-server.service</span><br></pre></td></tr></table></figure>
-
-<p>Once Kerberos service is running again, we can perform a quick test. First, try <code>klist</code> to see if any credentials cache exists, then try to see if <code>root/admin</code> can be authenticated. If no error, then try to use <code>klist</code> again to list the principal cached. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1000)</span><br></pre></td></tr></table></figure>
-<p>The “No credentials cache found” tells us there is no principal has been authenticated yet. Let’s run <code>kinit root/admin</code> to see if we can get it authenticated.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kinit root&#x2F;admin</span><br><span class="line">Password for root&#x2F;admin@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
-<p>If no error during root principal init, then run <code>klist</code> again.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: root&#x2F;admin@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 17:18:53  2020-03-13 03:18:53  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 17:18:51</span><br></pre></td></tr></table></figure>
-<p>If the credentials cache is found, then the KDC administrative principal setup is done.</p>
-<h5 id="3-4-Service-Server-and-Client-installation"><a href="#3-4-Service-Server-and-Client-installation" class="headerlink" title="3.4. Service Server and Client installation"></a>3.4. Service Server and Client installation</h5><p>For Service Server and Client, we only need to install the client/user related packages. Run below commands on both Service Server and Client machines.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ sudo apt install krb5-user libpam-krb5 libpam-ccreds auth-client-config</span><br></pre></td></tr></table></figure>
-<p>Same as KDC Server setup, it will ask for Realm, Kerberos server and Administrative server. Enter exactly the same information used for KDC Server and then click OK. After the installation is done, we should have below information configured in <code>/etc/krb5.conf</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[realms]</span><br><span class="line">	HIGHGO.CA &#x3D; &#123;</span><br><span class="line">		kdc &#x3D; kdc.highgo.ca</span><br><span class="line">		admin_server &#x3D; kdc.highgo.ca</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
-<p>Now, back to KDC Server side to add principals for Service Server and Client.</p>
-<h5 id="3-5-Add-principal-for-Service-Server"><a href="#3-5-Add-principal-for-Service-Server" class="headerlink" title="3.5. Add principal for Service Server"></a>3.5. Add principal for Service Server</h5><ul>
-<li><p>Add a principal <code>postgres</code> which is the database user and the Linux login user.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ sudo kadmin.local</span><br><span class="line">kadmin.local:  addprinc postgres</span><br><span class="line">WARNING: no policy specified for postgres@HIGHGO.CA; defaulting to no policy</span><br><span class="line">Enter password for principal &quot;postgres@HIGHGO.CA&quot;: </span><br><span class="line">Re-enter password for principal &quot;postgres@HIGHGO.CA&quot;: </span><br><span class="line">Principal &quot;postgres@HIGHGO.CA&quot; created.</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Add a principal <code>postgres/pg.highgo.ca</code> as a principle instance for Service server</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">kadmin.local:  addprinc postgres&#x2F;pg.highgo.ca</span><br><span class="line">WARNING: no policy specified for postgres&#x2F;pg.highgo.ca@HIGHGO.CA; defaulting to no policy</span><br><span class="line">Enter password for principal &quot;postgres&#x2F;pg.highgo.ca@HIGHGO.CA&quot;: </span><br><span class="line">Re-enter password for principal &quot;postgres&#x2F;pg.highgo.ca@HIGHGO.CA&quot;: </span><br><span class="line">Principal &quot;postgres&#x2F;pg.highgo.ca@HIGHGO.CA&quot; created.</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Extract the service principal from KDC principal database to a keytab file, which will be used to configure PostgreSQL Server. The file should be saved to current folder when run below commands.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ ktutil </span><br><span class="line">ktutil:  add_entry -password -p postgres&#x2F;pg.highgo.ca@HIGHGO.CA -k 1 -e aes256-cts-hmac-sha1-96</span><br><span class="line">Password for postgres&#x2F;pg.highgo.ca@HIGHGO.CA: </span><br><span class="line">ktutil:  wkt postgres.keytab</span><br><span class="line">ktutil:  exit</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h5 id="3-6-Add-principal-for-Client"><a href="#3-6-Add-principal-for-Client" class="headerlink" title="3.6. Add principal for Client"></a>3.6. Add principal for Client</h5><ul>
-<li>add a principal <code>david</code> for Client, this is the login user for Clinet OS, and later will be used to log into database<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">kadmin.local:  addprinc david</span><br><span class="line">WARNING: no policy specified for david@HIGHGO.CA; defaulting to no policy</span><br><span class="line">Enter password for principal &quot;david@HIGHGO.CA&quot;: </span><br><span class="line">Re-enter password for principal &quot;david@HIGHGO.CA&quot;: </span><br><span class="line">Principal &quot;david@HIGHGO.CA&quot; created.</span><br></pre></td></tr></table></figure></li>
-<li>check all the principals using <code>listprincs</code> to confirm <code>david@HIGHGO.CA</code>, <code>postgres@HIGHGO.CA</code> and <code>postgres/pg.highgo.ca@HIGHGO.CA</code> are all successfully created.<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">kadmin.local:  listprincs </span><br><span class="line">K&#x2F;M@HIGHGO.CA</span><br><span class="line">david@HIGHGO.CA</span><br><span class="line">kadmin&#x2F;admin@HIGHGO.CA</span><br><span class="line">kadmin&#x2F;changepw@HIGHGO.CA</span><br><span class="line">kadmin&#x2F;kdc.highgo.ca@HIGHGO.CA</span><br><span class="line">kiprop&#x2F;kdc.highgo.ca@HIGHGO.CA</span><br><span class="line">krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line">postgres@HIGHGO.CA</span><br><span class="line">root&#x2F;admin@HIGHGO.CA</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h5 id="3-7-Verify-principal-on-Service-Server"><a href="#3-7-Verify-principal-on-Service-Server" class="headerlink" title="3.7. Verify principal on Service Server"></a>3.7. Verify principal on Service Server</h5><p>After the above principals have been created from KDC Server, let’s back to Service Server to verify the principal using klist and kinit.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1001)</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ kinit postgres&#x2F;pg.highgo.ca</span><br><span class="line">Password for postgres&#x2F;pg.highgo.ca@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1001</span><br><span class="line">Default principal: postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 18:25:23  2020-03-13 04:25:23  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 18:25:20</span><br></pre></td></tr></table></figure>
-
-<h5 id="3-8-Verify-principal-on-Client"><a href="#3-8-Verify-principal-on-Client" class="headerlink" title="3.8. Verify principal on Client"></a>3.8. Verify principal on Client</h5><p>Now, back to Client machine to verify the principal using klist and kinit.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1000)</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ kinit david</span><br><span class="line">Password for david@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">david@client:~$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: david@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-12 18:21:41  2020-03-13 04:21:41  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-13 18:21:38</span><br></pre></td></tr></table></figure>
-<p>If the principals verification are all success on both Service Server and Client machines, then we are ready to configure PostgreSQL and prepare GSSAPI user authentication with Kerberos.</p>
-<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we explained the basic concepts used in Kerberos, performed a step by step setup on Ubuntu, added all the required principals to KDC, and also verified each principal which will be used in next two blogs.</p>
-<p><em><strong>Reference:</strong></em></p>
-<ol>
-<li><a href="https://help.ubuntu.com/lts/serverguide/kerberos.html" target="_blank" rel="noopener">Kerberos on ubuntu</a></li>
-<li><a href="https://simple.wikipedia.org/wiki/Kerberos_(protocol)" target="_blank" rel="noopener">Kerberos wiki</a></li>
-<li><a href="https://www.postgresql.org/docs/current/gssapi-auth.html" target="_blank" rel="noopener">PostgreSQL GSSAPI Authentication</a></li>
-</ol>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1735,12 +1672,12 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-count">23</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">59</span>
+        <span class="site-state-item-count">64</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
