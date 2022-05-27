@@ -2,9 +2,16 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://idrawone.github.io/2022/05/27/postgres-backup-restore-using-pg_rman/</loc>
+    
+    <lastmod>2022-05-27T20:45:53.682Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://idrawone.github.io/2022/04/29/global-deadlock-detection/</loc>
     
-    <lastmod>2022-04-29T20:09:12.416Z</lastmod>
+    <lastmod>2022-04-29T20:11:28.444Z</lastmod>
     
   </url>
   

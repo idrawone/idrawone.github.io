@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">23</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">24</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,116 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/03/03/how-to-create-a-system-info-function/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/03/03/how-to-create-a-system-info-function/" class="post-title-link" itemprop="url">How to create a system information function in PostgreSQL</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-03-03 00:00:00 / Modified: 15:19:02" itemprop="dateCreated datePublished" datetime="2021-03-03T00:00:00-08:00">2021-03-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/WAL/" itemprop="url" rel="index">
+                    <span itemprop="name">WAL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/WAL/Streaming/" itemprop="url" rel="index">
+                    <span itemprop="name">Streaming</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/WAL/Streaming/Replication/" itemprop="url" rel="index">
+                    <span itemprop="name">Replication</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi_sys_info_fun.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL supports many System Information Functions, such as Session Information Functions, Access Privilege Inquiry Functions, Schema Visibility Inquiry Functions, System Catalog Information Functions, Transaction ID and Snapshot Information Functions, etc. However, you may want build some special functions and integrate them into the PostgreSQL. This blog is going to walk through the steps about how to build your own System Information Functions into PostgreSQL.</p>
+<h4 id="2-Analyze-the-requirement"><a href="#2-Analyze-the-requirement" class="headerlink" title="2. Analyze the requirement"></a>2. Analyze the requirement</h4><p>Since there are so many functions built-in PostgreSQL already, you should perform some research and analysis before you decide to create a new one. In this blog, I want to check the transaction id after each savepoints in an ongoing transaction, so that I can perform some visibility check before the whole transaction is committed. For example, I have a query like below, but I can’t figure out the transaction id after each savepoint if I use existing System Information Function .</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# CREATE TABLE tbl (data text);</span><br><span class="line">CREATE TABLE</span><br><span class="line">postgres&#x3D;# BEGIN;</span><br><span class="line">BEGIN</span><br><span class="line">postgres&#x3D;# INSERT INTO tbl VALUES(&#39;HelloWorld-1&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line">postgres&#x3D;# SELECT txid_current();</span><br><span class="line"> txid_current </span><br><span class="line">--------------</span><br><span class="line">          488</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SAVEPOINT AA;</span><br><span class="line">SAVEPOINT</span><br><span class="line">postgres&#x3D;# INSERT INTO tbl VALUES(&#39;HelloWorld-2&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT txid_current();</span><br><span class="line"> txid_current </span><br><span class="line">--------------</span><br><span class="line">          488</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
+<p>As you can see, I always get the same Transaction ID even after a savepoint using existing txid_current() function. In this case, I decide to create my own system information function to retrieve the information I want.</p>
+<h4 id="3-System-Information-Function-template"><a href="#3-System-Information-Function-template" class="headerlink" title="3. System Information Function template"></a>3. System Information Function template</h4><p>To create your own System Information Function, you need to check the System Catalogs to see in which category it can fit. For the case mentioned above, I chose the catalog <a href="https://www.postgresql.org/docs/13/catalog-pg-proc.html" target="_blank" rel="noopener">pg_proc</a> which stores information about functions, procedures, aggregate functions, and window functions. The document <a href="https://www.postgresql.org/docs/11/system-catalog-initial-data.html" target="_blank" rel="noopener">System Catalog Initial Data</a> provides more detailed description and examples about the <code>.dat</code> file format and the rules to define your own OID.</p>
+<p>Now, let’s define a function, say <code>current_xid_list();</code>. Below is an example about how the function initial data may look like.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># function to get the top and sub transactions XIDs</span><br><span class="line">&#123; oid &#x3D;&gt; &#39;5566&#39;, descr &#x3D;&gt; &#39;get current transaction list&#39;,</span><br><span class="line">  proname &#x3D;&gt; &#39;current_xid_list&#39;, provolatile &#x3D;&gt; &#39;s&#39;,</span><br><span class="line">  prorettype &#x3D;&gt; &#39;txid_snapshot&#39;, proargtypes &#x3D;&gt; &#39;&#39;,</span><br><span class="line">  prosrc &#x3D;&gt; &#39;current_xid_list&#39; &#125;,</span><br></pre></td></tr></table></figure>
+
+<p>Here, you need to generate your OID which doesn’t create any conflict. In the official PostgreSQL document, <a href="https://www.postgresql.org/docs/13/system-catalog-initial-data.html" target="_blank" rel="noopener">69.2.2. OID Assignment</a>, it descripts how the OIDs are managed and also provides a script <code>src/include/catalog/unused_oids</code> to list the unused OIDs. For example, if you run the script like below, you will get a list of OIDs that are not used by PostgreSQL yet.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">$ src&#x2F;include&#x2F;catalog&#x2F;unused_oids</span><br><span class="line">4 - 9</span><br><span class="line">210</span><br><span class="line">270 - 273</span><br><span class="line">357</span><br><span class="line">380 - 381</span><br><span class="line">421</span><br><span class="line">560 - 583</span><br><span class="line">606</span><br><span class="line">702 - 704</span><br><span class="line">760 - 763</span><br><span class="line">784 - 789</span><br><span class="line">811 - 816</span><br><span class="line">1177</span><br><span class="line">1179 - 1180</span><br><span class="line">1382 - 1383</span><br><span class="line">1986 - 1987</span><br><span class="line">2023</span><br><span class="line">2030</span><br><span class="line">2121</span><br><span class="line">2137</span><br><span class="line">2228</span><br><span class="line">3432</span><br><span class="line">3434 - 3435</span><br><span class="line">3998</span><br><span class="line">4035</span><br><span class="line">4142</span><br><span class="line">4187 - 4199</span><br><span class="line">4225 - 4299</span><br><span class="line">4388 - 4399</span><br><span class="line">4532 - 4565</span><br><span class="line">4572 - 4999</span><br><span class="line">5022 - 5027</span><br><span class="line">5032 - 5554</span><br><span class="line">5556 - 5999</span><br><span class="line">6015 - 6099</span><br><span class="line">6103</span><br><span class="line">6105</span><br><span class="line">6107 - 6109</span><br><span class="line">6116</span><br><span class="line">6122 - 9999</span><br></pre></td></tr></table></figure>
+<p>In my case, I picked the OID 5566 just for easy to remember. However, if you are planning to generate a System Information Function as patch and later submit to PostgreSQL community, then you better follow the rule to minimize the risk of OID collisions with other patches. What the PostgreSQL community recommended is a random OID number between <code>8000—9999</code>. Here how it is described in the official document, <code>When choosing OIDs for a patch that is not expected to be committed immediately, best practice is to use a group of more-or-less consecutive OIDs starting with some random choice in the range 8000—9999.</code> </p>
+<p>After this system information initial data definition, we need to define the actual c function which can help to retrieve the information we need. In the case above, there might be a bunch of SAVEPOINTs in one transaction, so we need return a list of those ongoing transaction IDs. Below is an example, which refer to the way that how the function <code>txid_current_snapshot</code> was built.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;*</span><br><span class="line"> * Same as txid_current_snapshot(), but returns top and sub transactions list</span><br><span class="line"> *</span><br><span class="line"> *      Return current top and sub transactions in TXID format</span><br><span class="line"> *</span><br><span class="line"> * Note that both top-transaction and sub-transaction XIDs are included.</span><br><span class="line"> *&#x2F;</span><br><span class="line">Datum</span><br><span class="line">current_xid_list(PG_FUNCTION_ARGS)</span><br><span class="line">&#123;</span><br><span class="line">    TxidSnapshot *snap;</span><br><span class="line">    uint32      nxip,</span><br><span class="line">                i;</span><br><span class="line">    TxidEpoch   state;</span><br><span class="line">    Snapshot    cur;</span><br><span class="line">    xl_xact_assignment *sublist;</span><br><span class="line">    TransactionId curxid &#x3D; GetCurrentTransactionIdIfAny();</span><br><span class="line"></span><br><span class="line">    cur &#x3D; GetActiveSnapshot();</span><br><span class="line">    if (cur &#x3D;&#x3D; NULL)</span><br><span class="line">        elog(ERROR, &quot;no active snapshot set&quot;);</span><br><span class="line"></span><br><span class="line">    load_xid_epoch(&amp;state);</span><br><span class="line"></span><br><span class="line">    StaticAssertStmt(MAX_BACKENDS * 2 &lt;&#x3D; TXID_SNAPSHOT_MAX_NXIP,</span><br><span class="line">                     &quot;possible overflow in txid_current_snapshot()&quot;);</span><br><span class="line"></span><br><span class="line">    &#x2F;* allocate *&#x2F;</span><br><span class="line">    nxip &#x3D; cur-&gt;xcnt;</span><br><span class="line">    snap &#x3D; palloc(TXID_SNAPSHOT_SIZE(nxip));</span><br><span class="line">    sublist &#x3D; palloc(MinSizeOfXactAssignment);</span><br><span class="line"></span><br><span class="line">    &#x2F;* fill *&#x2F;</span><br><span class="line">    GetCurrentSubTransactionIdList(sublist);</span><br><span class="line">    snap-&gt;xmin &#x3D; sublist-&gt;xtop;</span><br><span class="line">    snap-&gt;xmax &#x3D; curxid;</span><br><span class="line">    snap-&gt;nxip &#x3D; sublist-&gt;nsubxacts;</span><br><span class="line">    for (i &#x3D; 0; i &lt; snap-&gt;nxip; i++)</span><br><span class="line">        snap-&gt;xip[i] &#x3D; sublist-&gt;xsub[i];</span><br><span class="line"></span><br><span class="line">    sort_snapshot(snap);</span><br><span class="line"></span><br><span class="line">    &#x2F;* set size after sorting, because it may have removed duplicate xips *&#x2F;</span><br><span class="line">    SET_VARSIZE(snap, TXID_SNAPSHOT_SIZE(snap-&gt;nxip));</span><br><span class="line"></span><br><span class="line">    PG_RETURN_POINTER(snap);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>In the above function, you can define your data format. We decided to define a function which can help retrieve the transaction IDs within current transaction.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;*</span><br><span class="line"> * GetCurrentSubTransactionIdList</span><br><span class="line"> *&#x2F;</span><br><span class="line">void</span><br><span class="line">GetCurrentSubTransactionIdList(xl_xact_assignment *list)</span><br><span class="line">&#123;</span><br><span class="line">   TransactionState s &#x3D; CurrentTransactionState;</span><br><span class="line"></span><br><span class="line">   list-&gt;nsubxacts &#x3D; 0;</span><br><span class="line">   list-&gt;xtop &#x3D; GetTopTransactionIdIfAny();</span><br><span class="line"></span><br><span class="line">   for (s &#x3D; CurrentTransactionState; s !&#x3D; NULL; s &#x3D; s-&gt;parent)</span><br><span class="line">   &#123;</span><br><span class="line">       if (s-&gt;state &#x3D;&#x3D; TRANS_ABORT)</span><br><span class="line">           continue;</span><br><span class="line">       if (!FullTransactionIdIsValid(s-&gt;fullTransactionId))</span><br><span class="line">           continue;</span><br><span class="line"></span><br><span class="line">       list-&gt;xsub[list-&gt;nsubxacts++] &#x3D; s-&gt;fullTransactionId.value;</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Now, if you recompile PostgreSQL with above changes (of course, you need to declare the functions in proper files), you should be able to use your own System Information Function to see the difference based on what we has discussed at the beginning.</p>
+<h4 id="4-Testing"><a href="#4-Testing" class="headerlink" title="4. Testing"></a>4. Testing</h4><p>Once build success, restart the PostgreSQL server. Now, let’s try the previous SQL query again. As you can see, a different transaction ID <code>489</code> after a checkpoint is showing up.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# INSERT INTO tbl VALUES(&#39;HelloWorld-1&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line">postgres&#x3D;# SELECT txid_current();</span><br><span class="line"> txid_current </span><br><span class="line">--------------</span><br><span class="line">          488</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SAVEPOINT AA;</span><br><span class="line">SAVEPOINT</span><br><span class="line">postgres&#x3D;# INSERT INTO tbl VALUES(&#39;HelloWorld-2&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT txid_current();</span><br><span class="line"> txid_current </span><br><span class="line">--------------</span><br><span class="line">          488</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT current_xid_list();</span><br><span class="line"> current_xid_list </span><br><span class="line">------------------</span><br><span class="line"> 488:489:488,489</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+
+<p>If you add another savepoint, and then compare your newly added function <code>current_xid_list()</code> with existing <code>txid_current()</code>, you can see that <code>current_xid_list()</code> displays not only the top transaction ID, but also all the transaction IDs after each savepoint. </p>
+<h4 id="8-Summary"><a href="#8-Summary" class="headerlink" title="8. Summary"></a>8. Summary</h4><p>In this blog, we discussed PostgreSQL System Information Functions, and perform a simple walk-through about how to create your own System Information Function following the official document, and run some simple tests.</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1429,177 +1539,6 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/12/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-2/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part-2: PostgreSQL Configuration</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-
-              <time title="Created: 2020-03-12 04:00:00" itemprop="dateCreated datePublished" datetime="2020-03-12T04:00:00-07:00">2020-03-12</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-18 13:24:32" itemprop="dateModified" datetime="2020-03-18T13:24:32-07:00">2020-03-18</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/" itemprop="url" rel="index">
-                    <span itemprop="name">Kerberos</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/" itemprop="url" rel="index">
-                    <span itemprop="name">GSSAPI</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/" itemprop="url" rel="index">
-                    <span itemprop="name">Authentication</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/" itemprop="url" rel="index">
-                    <span itemprop="name">Ubuntu</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi-part2.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous <a href="https://idrawone.github.io/2020/03/11/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-1/">blog</a>, we have setup Kerberos, added all required principals and verified each principal. This blog will explain all the necessary configuration, i.e. <code>postgresql.conf</code>, <code>pg_hba.conf</code> and <code>pg_ident.conf</code>, in PostgreSQL for user authentication using GSSAPI with Kerberos.</p>
-<h4 id="2-Build-PostgreSQL-with-GSSAPI"><a href="#2-Build-PostgreSQL-with-GSSAPI" class="headerlink" title="2. Build PostgreSQL with GSSAPI"></a>2. Build PostgreSQL with GSSAPI</h4><p>The official <a href="https://www.postgresql.org/download/linux/ubuntu/" target="_blank" rel="noopener">PostgreSQL release for Ubuntu</a> has GSSAPI enabled for user authentication with Kerberos, however if you want to build it from source code, you can simply enable it by giving the option <code>--with-gssapi</code> in configure process like below.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ .&#x2F;configure --with-gssapi --prefix&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgapp</span><br></pre></td></tr></table></figure>
-<p>There is another option <code>--with-krb-srvnam</code>, PostgreSQL uses the default name of the Kerberos service principal. According to Postgres official document, “<em>There’s usually no reason to change this unless you have a Windows environment, in which case it must be set to upper case POSTGRES</em>“. In this blog, we keep it as default, and no extra configuration required for it. After enabled <code>--with-gssapi</code> option, you can build, install, initialize database, change configuration and start database service as normal. The commands used in this blog are list below.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">make &amp;&amp; make install</span><br><span class="line">export PATH&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgapp&#x2F;bin:$PATH</span><br><span class="line">export PGDATA&#x3D;&#x2F;home&#x2F;postgres&#x2F;pgdata&#x2F;data </span><br><span class="line">initdb -D $PGDATA</span><br></pre></td></tr></table></figure>
-
-<h4 id="3-Keytab-file"><a href="#3-Keytab-file" class="headerlink" title="3. Keytab file"></a>3. Keytab file</h4><p>If you have followed the previous blog “part-1: how to setup Kerberos on Ubuntu”, then you should already have the keytab file. Now, copy the keytab file to Service Server (Postgres Server) and put it to a folder with appropriate permissions to the user owning the Postgres process. For example, user <code>postgres</code> and folder <code>/home/postgres/pgdata/data</code> in this blog. The instance principal extracted from KDC server can be verified using ktutil on Service Server. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ ktutil </span><br><span class="line">ktutil:  list</span><br><span class="line">slot KVNO Principal</span><br><span class="line">---- ---- ---------------------------------------------------------------------</span><br><span class="line">ktutil:  read_kt postgres.keytab </span><br><span class="line">ktutil:  list</span><br><span class="line">slot KVNO Principal</span><br><span class="line">---- ---- ---------------------------------------------------------------------</span><br><span class="line">   1    1          postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line">ktutil:</span><br></pre></td></tr></table></figure>
-<p><code>postgres/pg.highgo.ca@HIGHGO.CA</code> is the principal we defined in previous blog in the format of <code>primary/instance@REALM</code>. In this example, <code>postgres</code> is the service, <code>/pg.highgo.ca</code> is the instance using the hostname.</p>
-<h4 id="4-PostgreSQL-Configuration"><a href="#4-PostgreSQL-Configuration" class="headerlink" title="4. PostgreSQL Configuration"></a>4. PostgreSQL Configuration</h4><p>Once keytab file has been set properly, we can configure the keytab file location in postgresql.conf like below.<br><code>krb_server_keyfile = &#39;/home/postgres/pgdata/data/postgres.keytab&#39;</code>.  </p>
-<p>Other than the keytab, we also need Postgres Server to allow connection from the network by change the listen_addresses.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">listen_addresses &#x3D; &#39;*&#39;</span><br></pre></td></tr></table></figure>
-<p>This is the minimum changes in postgresql.conf required for GSSAPI user authentication with Kerberos. </p>
-<h4 id="5-PostgreSQL-Client-Authentication"><a href="#5-PostgreSQL-Client-Authentication" class="headerlink" title="5. PostgreSQL Client Authentication"></a>5. PostgreSQL Client Authentication</h4><p><code>pg_hba.conf</code> is the file used to control clients authentication in PostgreSQL, where <code>hba</code> stands for host-based authentication. A default <code>pg_hba.conf</code> file is installed when the data directory is initialized by initdb. For details please refer to the <a href="(https://www.postgresql.org/docs/current/view-pg-hba-file-rules.html">rules</a> defined for this file, which provides a summary of the contents of the client authentication configuration file. The basic rule is that “<em>The first record with a matching connection type, client address, requested database, and user name is used to perform authentication. There is no <code>fall-through</code> or <code>backup</code>: if one record is chosen and the authentication fails, subsequent records are not considered. If no record matches, access is denied</em>.” In this blog, we will be focusing on GSSAPI releated users authentication using two key words, i.e. <code>hostgssenc</code> and <code>hostnogssenc</code> for the tests. For now, just put below two lines started with <code>hostgssenc</code> after IPv4 local connections.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># IPv4 local connections:</span><br><span class="line">host    all             all             127.0.0.1&#x2F;32            trust </span><br><span class="line">hostgssenc postgres     david           192.168.0.0&#x2F;24          gss include_realm&#x3D;0</span><br><span class="line">hostgssenc postgres     postgres        192.168.0.0&#x2F;24          gss include_realm&#x3D;0</span><br></pre></td></tr></table></figure>
-<p>Here is how we define the user authentication for using GSSAPI according to <a href="https://www.postgresql.org/docs/current/auth-pg-hba-conf.html" target="_blank" rel="noopener">PostgreSQL document</a>.</p>
-<ul>
-<li><code>hostgssenc</code> is used to match a TCP connection made with GSSAPI encryption.</li>
-<li><code>postgres</code> is the database name. </li>
-<li><code>david</code> and <code>postgres</code> are the users allowed to connect to the database. </li>
-<li><code>192.168.0.0/24</code> is the network for this particular setup.</li>
-<li><code>gss include_realm=0</code> means the authentication method <code>gss</code> is used with the option <code>include_realm=0</code> which indeicates the realm name from the authenticated user principal will be stripped off before being passed through the user name mapping.</li>
-</ul>
-<h4 id="6-PostgreSQL-User-Name-Maps"><a href="#6-PostgreSQL-User-Name-Maps" class="headerlink" title="6. PostgreSQL User Name Maps"></a>6. PostgreSQL User Name Maps</h4><p><a href="https://www.postgresql.org/docs/current/auth-username-maps.html" target="_blank" rel="noopener">pg_indent.conf</a> is used to map the users. The mapping can be used when user want to use email like user name e.g. <code>postgres@highgo.ca</code> to log in the database. For example, <code>postgres@highgo.ca</code> could be mapped to just <code>postgres</code>. According to <a href="https://www.postgresql.org/docs/current/auth-pg-hba-conf.html" target="_blank" rel="noopener">PostgreSQL document</a>, if <code>hostgssenc</code> is used, then only three authentication options are allowed: <code>gss</code>, <code>reject</code>, and <code>trust</code>. When <code>gss</code> is selected as the authentication option, then you can use below three option to specify the <code>gss</code> in further details.</p>
-<ul>
-<li><strong>include_realm:</strong> default set to <code>1</code>, if <code>0</code> is specified as above example, then realm name from the authenticated user principal is stripped off.</li>
-<li><strong>map:</strong> is the mapping between system and database user names. The mapping supports regular expression when system user started with <code>/</code>. For example, <code>mymap   /^(.*)@mydomain\.com$      \1</code> is to remove the domain part for users from system user names. </li>
-<li><strong>krb_realm:</strong> is used to match user principal names. If this parameter is set, only users of that realm will be accepted.<br>For example,<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostgssenc  postgres  postgres  192.168.0.0&#x2F;24  gss include_realm&#x3D;1 map&#x3D;mymap krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
-Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying, match a TCP connection with GSS encryption enabled and map system user using <code>mymap</code> defined in <code>pg_ident.conf</code> for user from reamlm <code>HIGHGO.CA</code> only.</li>
-</ul>
-<h4 id="7-User-Authentication"><a href="#7-User-Authentication" class="headerlink" title="7. User Authentication"></a>7. User Authentication</h4><p>Now, we have one database admin user <code>postgres</code> setup on PostgreSQL server, let’s restrict this <code>postgres</code> user has to connect to Postgre server using GSSAPI user authentication with Kerberos.</p>
-<h5 id="7-1-database-admin-user-local-authentication"><a href="#7-1-database-admin-user-local-authentication" class="headerlink" title="7.1. database admin user local authentication"></a>7.1. database admin user local authentication</h5><p>Disable all other user authentication <code>in pg_hba.conf</code>, set user authentication to allow <code>gss</code> with <code>include_realm=0</code> only, then restart Postgres server. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostgssenc  postgres  postgres  192.168.0.0&#x2F;24  gss include_realm&#x3D;0</span><br></pre></td></tr></table></figure>
-<p>From Postgres server terminal, run <code>kdestroy -A</code> to clean all cached credentials, then run <code>klist</code> to check.  </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1001)</span><br></pre></td></tr></table></figure>
-<p>No credentials cached yet, then run <code>kinit postgres</code> to initial the user authentication.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kinit postgres</span><br><span class="line">Password for postgres@HIGHGO.CA:</span><br></pre></td></tr></table></figure>
-<p>Now, check the cached credentials again,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1001</span><br><span class="line">Default principal: postgres@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-15 14:17:07  2020-03-16 00:17:07  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-16 14:17:04</span><br></pre></td></tr></table></figure>
-<p>After the credentials has been cached, let’s try to log in use database admin user <code>postgres</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# \q</span><br></pre></td></tr></table></figure>
-<p>As the message <code>GSSAPI-encrypted connection</code> above indicates the connection is encrypted. Let’s check the cached credentials again,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1001</span><br><span class="line">Default principal: postgres@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-15 14:17:07  2020-03-16 00:17:07  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-16 14:17:04</span><br><span class="line">2020-03-15 14:21:21  2020-03-16 00:17:07  postgres&#x2F;pg.highgo.ca@</span><br><span class="line">	renew until 2020-03-16 14:17:04</span><br><span class="line">2020-03-15 14:21:21  2020-03-16 00:17:07  postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-16 14:17:04</span><br></pre></td></tr></table></figure>
-<p>We can see the credentials for service principal <code>postgres/pg.highgo.ca</code> has been cached.<br><img src="/images/img/gssapi-postgres.png" alt="GSSAPI Postgres"><br>From the above wireshark capture, </p>
-<ul>
-<li>message 1: AS_REQ is the initial user authentication request triggered by <code>kinit</code>.</li>
-<li>message 2: KRB Error is the reply from Authentication Server to ask password for user <code>postgres</code></li>
-<li>message 3: AS_REQ is the user authentication request encrypted using <code>postgres</code>‘s password</li>
-<li>message 4: AS_REP is the encrypted reply from Authentication Server. Upon now, <code>kini</code> is done, and user <code>postgres</code>‘s credential has been cached.</li>
-<li>message 5: TGS_REQ is the request from <code>psql</code> to Ticket Granting Server (TGS) for a service ticket.</li>
-<li>message 6: TGS_REP is the reply from Ticket Granting Server which contains a service session key generated by TGS and encrypted using a temporary session key generated by AS for user <code>postgres</code>.</li>
-</ul>
-<p>Within the service principal expire time, any new log in from the same machine with user <code>postgres</code> will not be required to provide the password. If you use wireshark to monitor the traffic again, you won’t see any <code>KRB5</code> message between KDC and Postgres Server.</p>
-<h5 id="7-2-database-admin-user-remote-authentication"><a href="#7-2-database-admin-user-remote-authentication" class="headerlink" title="7.2. database admin user remote authentication"></a>7.2. database admin user remote authentication</h5><p>Now, let’s run the same test from the Client machine to observer the authentication messages.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">$ kdestroy -A</span><br><span class="line">$ klist</span><br><span class="line">klist: No credentials cache found (filename: &#x2F;tmp&#x2F;krb5cc_1000)</span><br><span class="line"></span><br><span class="line">$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: postgres@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-15 14:57:53  2020-03-16 00:57:53  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-16 14:57:50</span><br><span class="line"></span><br><span class="line">$ psql -d postgres -U postgres -h pg.highgo.ca</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# \q</span><br><span class="line"></span><br><span class="line">$ klist</span><br><span class="line">Ticket cache: FILE:&#x2F;tmp&#x2F;krb5cc_1000</span><br><span class="line">Default principal: postgres@HIGHGO.CA</span><br><span class="line"></span><br><span class="line">Valid starting       Expires              Service principal</span><br><span class="line">2020-03-15 14:57:53  2020-03-16 00:57:53  krbtgt&#x2F;HIGHGO.CA@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-16 14:57:50</span><br><span class="line">2020-03-15 14:58:00  2020-03-16 00:57:53  postgres&#x2F;pg.highgo.ca@</span><br><span class="line">	renew until 2020-03-16 14:57:50</span><br><span class="line">2020-03-15 14:58:00  2020-03-16 00:57:53  postgres&#x2F;pg.highgo.ca@HIGHGO.CA</span><br><span class="line">	renew until 2020-03-16 14:57:50</span><br></pre></td></tr></table></figure>
-
-<p><img src="/images/img/gssapi-postgres-client.png" alt="GSSAPI Client"><br>The result is almost the same as authenticate user <code>postgres</code> on PostgreSQL server, but if you look at the wireshark, you will find the PostgreSQL Server, i.e. <code>192.168.0.102</code> didn’t involve in the entire user authentication process. In other words, PostgreSQL Server only rely on the keytab file extracted from KDC server.</p>
-<p>If you want to use a different user to log into database, then you need create the user on PostgreSQL server as database user, and create the principal for this user on KDC server. Create corresponding user authentication in <code>pg_hba.conf</code> file and restart PostgreSQL server. Then you should be able to use the new user to log in database from either Client machine or PostgreSQL server machine.</p>
-<h4 id="8-Common-errors"><a href="#8-Common-errors" class="headerlink" title="8. Common errors"></a>8. Common errors</h4><p>Some common errors may happen during the PostgreSQL user authentication with Kerberos. Here is a short list.</p>
-<ul>
-<li><p>Try to connect before the user credentials has been cached</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql: error: could not connect to server: FATAL:  no pg_hba.conf entry for host &quot;192.168.0.103&quot;, user &quot;postgres&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>User doesn’t exist in KDC</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h pg.highgo.ca -U jack</span><br><span class="line">psql: error: could not connect to server: FATAL:  no pg_hba.conf entry for host &quot;192.168.0.103&quot;, user &quot;jack&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Service principal is expired</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql: error: could not connect to server: could not initiate GSSAPI security context: Unspecified GSS failure.  Minor code may provide more information</span><br><span class="line">could not initiate GSSAPI security context: Ticket expired</span><br><span class="line">FATAL:  no pg_hba.conf entry for host &quot;192.168.0.103&quot;, user &quot;postgres&quot;, database &quot;postgres&quot;</span><br></pre></td></tr></table></figure>
-<h4 id="9-Summary"><a href="#9-Summary" class="headerlink" title="9. Summary"></a>9. Summary</h4><p>In this blog, we explained how to enable GSSAPI from source code and the keytab file, discussed those three key configuration files, i.e. “PostgreSQL Configuration”, “PostgreSQL Client Authentication” and “PostgreSQL Users Mapping”, and we also demonstrated user authentication from different hosts with Kerberos. In next blog, we will discuss how to check authentication and encryption status for different connection requests.</p>
-</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1672,12 +1611,12 @@ Where, <code>gss include_realm=1 map=mymap krb_realm=HIGHGO.CA</code> is saying,
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-count">24</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">64</span>
+        <span class="site-state-item-count">67</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
