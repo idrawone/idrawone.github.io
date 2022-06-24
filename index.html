@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">24</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">25</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,123 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/06/24/one-idea-of-accessing-primarys-buffer-blocks/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/06/24/one-idea-of-accessing-primarys-buffer-blocks/" class="post-title-link" itemprop="url">One idea of accessing Primary's buffer blocks</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-06-24 01:00:00 / Modified: 12:39:49" itemprop="dateCreated datePublished" datetime="2022-06-24T01:00:00-07:00">2022-06-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/primary/" itemprop="url" rel="index">
+                    <span itemprop="name">primary</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/primary/buffer/" itemprop="url" rel="index">
+                    <span itemprop="name">buffer</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/primary/buffer/block/" itemprop="url" rel="index">
+                    <span itemprop="name">block</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/primary/buffer/block/share/" itemprop="url" rel="index">
+                    <span itemprop="name">share</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/primary/buffer/block/share/storage/" itemprop="url" rel="index">
+                    <span itemprop="name">storage</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-remote-access-buffer-blocks.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is a great open source project for many reasons. One of the reasons I like it is because of the design of buffer blocks addressing. In this blog, I am going to explain a possible way to share a Primary’s buffer blocks with a Standby. If you want to know more about how buffer tag works, you can refer to my <a href="https://www.highgo.ca/2021/07/23/the-amazing-buffer-tag-in-postgresql/" target="_blank" rel="noopener">previous blog</a>.</p>
+<h4 id="2-Primary-and-Standby"><a href="#2-Primary-and-Standby" class="headerlink" title="2. Primary and Standby"></a>2. Primary and Standby</h4><p>In Postgres, a Primary is an active database which accepts connections and performs read-write SQL operations; a Standby is a copy of the active database, and it also accepts connection but only for read SQL operations. Because the Standby needs to perform the ‘copy’ action in order to synchronize with Primary database, technically they are not exactly <code>equal</code> if a SQL query is time sensitive. Then, can we let a Standby to be <code>equal</code> to a Primary? </p>
+<p>The answer is <code>probably!</code>. I recently did some experimental tests to see if a Standby can access Primary’s buffer blocks in order to check the data which has not been replicated yet. The results is very positive.</p>
+<h4 id="3-How-to-share-it"><a href="#3-How-to-share-it" class="headerlink" title="3. How to share it"></a>3. How to share it</h4><p>To achieve this experimental remote buffer blocks access, here are a few things I did:<br>On Primary side,</p>
+<ol>
+<li>starts a simple dedicated TCP/IP server to listen for the buffer tag request from Standby</li>
+<li>checks if the buffer block in memory for received buffer tag</li>
+<li>If found and dirty then sends the 8KB buffer block to Standby</li>
+<li>If not found then simply answer not found<br>On Standby side,</li>
+<li>add a simple TCP/IP client for buffer manager</li>
+<li>send buffer tag request to Primary when buffer manager needs to load a data block from disk</li>
+<li>add 8KB data block to buffer if received from Primary</li>
+<li>if no data block from Primary then load data from disk</li>
+<li>skip buffer tag check to avoid use cashed data blocks</li>
+</ol>
+<p>With these basic changes, a Standby can access Primary’s buffer block and get the same query results even the data has not been replicated yet (in my experimental test, I actually skip the head redo on Standby and let Standby to access Primary’s base cluster, disable the storage write actives).</p>
+<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I introduced a way to experiment the access of Primary’s buffer blocks, and hope this can be a topic for continues study if someone want to learn PostgreSQL in deep.</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1261,114 +1378,6 @@ _**Reference:**_
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/07/23/the-amazing-buffer-tag-in-PG/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/07/23/the-amazing-buffer-tag-in-PG/" class="post-title-link" itemprop="url">The Amazing Buffer Tag in PostgreSQL</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-              
-
-              <time title="Created: 2021-07-23 01:00:00 / Modified: 14:49:52" itemprop="dateCreated datePublished" datetime="2021-07-23T01:00:00-07:00">2021-07-23</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/buffer-tag/" itemprop="url" rel="index">
-                    <span itemprop="name">buffer tag</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/buffer-tag/hashtable/" itemprop="url" rel="index">
-                    <span itemprop="name">hashtable</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/buffer-tag/hashtable/lookup/" itemprop="url" rel="index">
-                    <span itemprop="name">lookup</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi_buffer_tag.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>I was working on the PostgreSQL storage related features recently, and I found PostgreSQL has designed an amazing storage addressing mechanism, i.e. Buffer Tag. In this blog, I want to share with you my understanding about the Buffer Tag and some potential usage of it.</p>
-<h4 id="2-Buffer-Tag"><a href="#2-Buffer-Tag" class="headerlink" title="2. Buffer Tag"></a>2. Buffer Tag</h4><p>I was always curious to know how PostgreSQl can find out the tuple data blocks so quickly when the first time I started to use PostgreSQL in an IoT project, but I never got the chance to look it into details even though I knew PostgreSQL is an very well organized open-source project. Until I recently got a task which needs to solve some storage related issue in PostgreSQL. There is very detailed explanation about how Buffer Manger works in an online PostgreSQL books for developers <a href="https://www.interdb.jp/pg/index.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a>, one of the best PostgreSQL books I would recommend to the beginner of PostgreSQL development to read.</p>
-<p>Buffer Tag, in simple words, is just five numbers. Why it is five numbers? First, all the objects including the storage files are managed by Object Identifiers, i.e. OID. For example, when user creates a table, the table name is mapped to an OID; when user creates a database, the name is mapped to an OID; when the corresponding data need to be persistent on disk, the files is also named using OID. Secondly, when a table requires more pages to store more tuples, then each page for the same table is managed by the page number in sequence. For example, when PostgreSQL needs to estimate the table size before decide what kind of scan should be used to find out the tuple faster, it need to know the number of blocks information. Thirdly, it is easy to understand that data tuples are the major user data need to be stored, but in order to better manage these data tuples, PostgreSQL needs others information, such as visibility to manage the status of these data tuples, and free space to optimize files usage. So this ends up with five numbers, i.e. Tablespace, Database, Table, ForkNumber, BlockNumber. </p>
-<p>Given these five numbers, PostgreSQL can always find out where the data tuples are stored, which file is used, and what size the table is etc. </p>
-<h4 id="3-How-Buffer-Tag-is-used"><a href="#3-How-Buffer-Tag-is-used" class="headerlink" title="3. How Buffer Tag is used"></a>3. How Buffer Tag is used</h4><p>Now, we have the buffer tag, five numbers, but how it is used in PosggreSQL. One typical use case of buffer tag is to help buffer manager to manage the location of memory blocks in the buffer pool/array. In this case, a hash table was introduced to resolve the mapping between buffer tag and the location of memory block in buffer pool/array. Here is a picture to show relationship among buffer tag, hashtable, buffer descriptor, and buffer pool/array.</p>
-<p><img src="/images/img/buffer-tag-mapping.png" alt="Buffer Tag Mapping"></p>
-<p>For example, the first green buffer tag {(1663, 13589, 16387), 0, 0} indicates a table space 1663, a database 12709, and a table 16387 with forkNumber 0 (main fork for tuples) which stored in a file at block 0. The buffer tag has a hash value 1536704684 which has been assigned to the memory block 0 managed by buffer manager at this moment. Since buffer descriptor is addressed using the same slot number as memory block in buffer pool/array, so they both share the same slot number 0, in this case.</p>
-<p>With the above relationship, PostgreSQL can find out the memory block location or assign buffer slot to a new memory block for particular buffer tag.</p>
-<p>The other typical use case of buffer tag is to help the storage manager to manage the corresponding files. In this case, the blockNumber is always to 0 since it doesn’t require multiple blocks to store more data. Here, you can create your use case of buffer tag. For example, use the buf_id as the number of blocks for each database relation instead of using it to indicate the memory block location. Moreover, you can also use the buffer tag plus the hashtable to manage multiple information such as having both buf_id for location of the memory block and adding a new attribute total to manage the number of blocks. You can achieve this by define a different buffer lookup entry. For example, </p>
-<p>The original buffer lookup entry using buffer tag to lookup the location of memory block.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;* entry for buffer lookup hashtable *&#x2F;</span><br><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">    BufferTag   key;            &#x2F;* Tag of a disk page *&#x2F;</span><br><span class="line">    int         id;             &#x2F;* Associated buffer ID *&#x2F;</span><br><span class="line">&#125; BufferLookupEnt;</span><br></pre></td></tr></table></figure>
-
-<p>Below is an example of buffer lookup entry which can lookup both the location of memory block and the number of blocks used by this particular buffer tag.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">    BufferTag   key;            &#x2F;* Tag of a disk page    *&#x2F;</span><br><span class="line">    int         id;             &#x2F;* Associated buffer ID  *&#x2F;</span><br><span class="line">    int         total;          &#x2F;* the total number of X *&#x2F;</span><br><span class="line">&#125; ESRelLookupEnt;</span><br><span class="line">&#96;</span><br></pre></td></tr></table></figure>
-
-<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed what is Buffer Tag, how it is used in PostgreSQL and some potential usage of Buffer Tag to address the mapping issues between tables to storage files as well as the lookup issues.</p>
-<p><em><strong>Reference:</strong></em></p>
-<ol>
-<li><a href="https://www.interdb.jp/pg/index.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a></li>
-</ol>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1441,12 +1450,12 @@ _**Reference:**_
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-count">25</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">67</span>
+        <span class="site-state-item-count">72</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

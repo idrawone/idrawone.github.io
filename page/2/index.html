@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">24</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">25</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,114 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/07/23/the-amazing-buffer-tag-in-PG/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/07/23/the-amazing-buffer-tag-in-PG/" class="post-title-link" itemprop="url">The Amazing Buffer Tag in PostgreSQL</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-07-23 01:00:00 / Modified: 14:49:52" itemprop="dateCreated datePublished" datetime="2021-07-23T01:00:00-07:00">2021-07-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/buffer-tag/" itemprop="url" rel="index">
+                    <span itemprop="name">buffer tag</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/buffer-tag/hashtable/" itemprop="url" rel="index">
+                    <span itemprop="name">hashtable</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/buffer-tag/hashtable/lookup/" itemprop="url" rel="index">
+                    <span itemprop="name">lookup</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi_buffer_tag.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>I was working on the PostgreSQL storage related features recently, and I found PostgreSQL has designed an amazing storage addressing mechanism, i.e. Buffer Tag. In this blog, I want to share with you my understanding about the Buffer Tag and some potential usage of it.</p>
+<h4 id="2-Buffer-Tag"><a href="#2-Buffer-Tag" class="headerlink" title="2. Buffer Tag"></a>2. Buffer Tag</h4><p>I was always curious to know how PostgreSQl can find out the tuple data blocks so quickly when the first time I started to use PostgreSQL in an IoT project, but I never got the chance to look it into details even though I knew PostgreSQL is an very well organized open-source project. Until I recently got a task which needs to solve some storage related issue in PostgreSQL. There is very detailed explanation about how Buffer Manger works in an online PostgreSQL books for developers <a href="https://www.interdb.jp/pg/index.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a>, one of the best PostgreSQL books I would recommend to the beginner of PostgreSQL development to read.</p>
+<p>Buffer Tag, in simple words, is just five numbers. Why it is five numbers? First, all the objects including the storage files are managed by Object Identifiers, i.e. OID. For example, when user creates a table, the table name is mapped to an OID; when user creates a database, the name is mapped to an OID; when the corresponding data need to be persistent on disk, the files is also named using OID. Secondly, when a table requires more pages to store more tuples, then each page for the same table is managed by the page number in sequence. For example, when PostgreSQL needs to estimate the table size before decide what kind of scan should be used to find out the tuple faster, it need to know the number of blocks information. Thirdly, it is easy to understand that data tuples are the major user data need to be stored, but in order to better manage these data tuples, PostgreSQL needs others information, such as visibility to manage the status of these data tuples, and free space to optimize files usage. So this ends up with five numbers, i.e. Tablespace, Database, Table, ForkNumber, BlockNumber. </p>
+<p>Given these five numbers, PostgreSQL can always find out where the data tuples are stored, which file is used, and what size the table is etc. </p>
+<h4 id="3-How-Buffer-Tag-is-used"><a href="#3-How-Buffer-Tag-is-used" class="headerlink" title="3. How Buffer Tag is used"></a>3. How Buffer Tag is used</h4><p>Now, we have the buffer tag, five numbers, but how it is used in PosggreSQL. One typical use case of buffer tag is to help buffer manager to manage the location of memory blocks in the buffer pool/array. In this case, a hash table was introduced to resolve the mapping between buffer tag and the location of memory block in buffer pool/array. Here is a picture to show relationship among buffer tag, hashtable, buffer descriptor, and buffer pool/array.</p>
+<p><img src="/images/img/buffer-tag-mapping.png" alt="Buffer Tag Mapping"></p>
+<p>For example, the first green buffer tag {(1663, 13589, 16387), 0, 0} indicates a table space 1663, a database 12709, and a table 16387 with forkNumber 0 (main fork for tuples) which stored in a file at block 0. The buffer tag has a hash value 1536704684 which has been assigned to the memory block 0 managed by buffer manager at this moment. Since buffer descriptor is addressed using the same slot number as memory block in buffer pool/array, so they both share the same slot number 0, in this case.</p>
+<p>With the above relationship, PostgreSQL can find out the memory block location or assign buffer slot to a new memory block for particular buffer tag.</p>
+<p>The other typical use case of buffer tag is to help the storage manager to manage the corresponding files. In this case, the blockNumber is always to 0 since it doesn’t require multiple blocks to store more data. Here, you can create your use case of buffer tag. For example, use the buf_id as the number of blocks for each database relation instead of using it to indicate the memory block location. Moreover, you can also use the buffer tag plus the hashtable to manage multiple information such as having both buf_id for location of the memory block and adding a new attribute total to manage the number of blocks. You can achieve this by define a different buffer lookup entry. For example, </p>
+<p>The original buffer lookup entry using buffer tag to lookup the location of memory block.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;* entry for buffer lookup hashtable *&#x2F;</span><br><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">    BufferTag   key;            &#x2F;* Tag of a disk page *&#x2F;</span><br><span class="line">    int         id;             &#x2F;* Associated buffer ID *&#x2F;</span><br><span class="line">&#125; BufferLookupEnt;</span><br></pre></td></tr></table></figure>
+
+<p>Below is an example of buffer lookup entry which can lookup both the location of memory block and the number of blocks used by this particular buffer tag.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">    BufferTag   key;            &#x2F;* Tag of a disk page    *&#x2F;</span><br><span class="line">    int         id;             &#x2F;* Associated buffer ID  *&#x2F;</span><br><span class="line">    int         total;          &#x2F;* the total number of X *&#x2F;</span><br><span class="line">&#125; ESRelLookupEnt;</span><br><span class="line">&#96;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed what is Buffer Tag, how it is used in PostgreSQL and some potential usage of Buffer Tag to address the mapping issues between tables to storage files as well as the lookup issues.</p>
+<p><em><strong>Reference:</strong></em></p>
+<ol>
+<li><a href="https://www.interdb.jp/pg/index.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a></li>
+</ol>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1394,151 +1502,6 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/03/15/PostgreSQL-GSSAPI-Authentication-with-Kerberos-part-3/" class="post-title-link" itemprop="url">PostgreSQL GSSAPI Authentication with Kerberos part-3: the status of authentication, encryption and user principal</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-
-              <time title="Created: 2020-03-15 04:00:00" itemprop="dateCreated datePublished" datetime="2020-03-15T04:00:00-07:00">2020-03-15</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-03-18 13:24:16" itemprop="dateModified" datetime="2020-03-18T13:24:16-07:00">2020-03-18</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/" itemprop="url" rel="index">
-                    <span itemprop="name">Kerberos</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/" itemprop="url" rel="index">
-                    <span itemprop="name">GSSAPI</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/" itemprop="url" rel="index">
-                    <span itemprop="name">Authentication</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/" itemprop="url" rel="index">
-                    <span itemprop="name">Ubuntu</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Kerberos/GSSAPI/Authentication/Ubuntu/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi-part3.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In previous two blogs, we explained how to setup Kerberos, and how to configure PostgreSQL to support GSSAPI user authentication. This blog will be focusing on how to check GSSAPI authentication, encryption and user principal information when given different connection options.</p>
-<h4 id="2-pg-stat-gssapi-view"><a href="#2-pg-stat-gssapi-view" class="headerlink" title="2. pg_stat_gssapi view"></a>2. pg_stat_gssapi view</h4><p>According to the official <a href="https://www.postgresql.org/docs/current/gssapi-auth.html" target="_blank" rel="noopener">PostgreSQL document</a>, “<em>PostgreSQL supports GSSAPI for use as either an encrypted, authenticated layer, or for authentication only.</em>“ To check the authentication, encryption and user principal, we need to use <code>pg_stat_gssapi</code> view, which is a dynamic statistics views containing one row per backend and showing the information about GSSAPI authentication and encryption used on this connection.</p>
-<p>Before start the test below, make sure the <code>PostgreSQL server</code> and the <code>psql client</code> has the option <code>--with-gssap</code> enabled during build time.</p>
-<h4 id="3-Authentication-and-Encryption-status"><a href="#3-Authentication-and-Encryption-status" class="headerlink" title="3. Authentication and Encryption status"></a>3. Authentication and Encryption status</h4><ul>
-<li><strong>Scenario 1:</strong></li>
-</ul>
-<p>Both authentication and encryption are enabled when the host-based authentication is configured with <code>hostgssenc</code> and <code>gss</code> in <code>pg_hba.conf</code><br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostgssenc  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
-
-<p>Initiate the user <code>postgres</code> credential cache using <code>kinit</code>, and then connect to PostgreSQL server with user <code>postgres</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2274 | t                 | t         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
-<p>From the result, we can see this connection is encrypted and the user is authenticated with principal <code>postgres@HIGHGO.CA</code>.</p>
-<ul>
-<li><strong>Scenario 2:</strong></li>
-</ul>
-<p>The encryption will be disabled, but user authentication is still enabled when the host-based authentication is configured with <code>hostnogssenc</code> and <code>gss</code> in <code>pg_hba.conf</code><br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostnogssenc  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2291 | t                 | f         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
-<p>The result tells no encryption, but user has been authenticated using principal <code>postgres@HIGHGO.CA</code></p>
-<ul>
-<li><strong>Scenario 3:</strong></li>
-</ul>
-<p>Both encryption and authentication are all enabled when the host-based authentication is configured with <code>host</code> and <code>gss</code> in <code>pg_hba.conf</code>.<br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  gss include_realm&#x3D;0 krb_realm&#x3D;HIGHGO.CA</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted |     principal      </span><br><span class="line">------+-------------------+-----------+--------------------</span><br><span class="line"> 2309 | t                 | t         | postgres@HIGHGO.CA</span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
-<p>This result is the same as the first one, meaning, <code>host</code> is equivalent to <code>hostgssenc</code> when <code>gss</code> is specified.</p>
-<ul>
-<li><strong>Scenario 4:</strong></li>
-</ul>
-<p>The authentication will be disabled, but encryption is still on when the host-based authentication is configured with <code>host</code> and <code>trust</code> in <code>pg_hba.conf</code>.<br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  trust</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -d postgres -h pg.highgo.ca -U postgres</span><br><span class="line">psql (12.2)</span><br><span class="line">GSSAPI-encrypted connection</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted | principal </span><br><span class="line">------+-------------------+-----------+-----------</span><br><span class="line"> 2322 | f                 | t         | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
-<p>This result tells that the encryption will be always on when <code>--with-gssapi</code> is enabled during build time, unless <code>hostnogssenc</code> is specified in the host-based authentication file.</p>
-<ul>
-<li><strong>Scenario 5:</strong></li>
-</ul>
-<p>Both authentication and encryption will be disabled when the host-based authentication is configured with <code>host</code> and <code>trust</code> in <code>pg_hba.conf</code>, and the client <code>psql</code> requests a non-gssenc mode connection, i.e. <code>gssencmode=disable</code>.<br>Set below user authentication rule to <code>pg_hba.conf</code> and disable all other rules. </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  postgres  postgres  192.168.0.102&#x2F;32  trust</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">postgres@pg:~$ psql -h pg.highgo.ca -U postgres -d &quot;dbname&#x3D;postgres gssencmode&#x3D;disable&quot;</span><br><span class="line">psql (12.2)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# SELECT pid, gss_authenticated, encrypted, principal from pg_stat_gssapi where pid &#x3D; pg_backend_pid();</span><br><span class="line"> pid  | gss_authenticated | encrypted | principal </span><br><span class="line">------+-------------------+-----------+-----------</span><br><span class="line"> 2328 | f                 | f         | </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;#</span><br></pre></td></tr></table></figure>
-<p>You can also achieve the same result by setting the environment <code>PGGSSENCMODE=disable</code> from the client side. For example,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PGGSSENCMODE&#x3D;disable psql -h pg.highgo.ca -U postgres -d postgres</span><br></pre></td></tr></table></figure>
-
-<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed how to check authentication, encryption and user principal in 5 different scenarios. As you can see once <code>--with-gssapi</code> is enabled in PostgreSQL, the encryption will always be turned on unless you specify <code>hostnogssenc</code> in the host-based authentication file, or manually disable gssenc mode from a client side. Knowing the difference might help you when working the security related environment setup using GSSAPI.</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1611,12 +1574,12 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">24</span>
+          <span class="site-state-item-count">25</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">67</span>
+        <span class="site-state-item-count">72</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
