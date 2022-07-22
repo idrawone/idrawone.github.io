@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">25</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">26</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,150 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/07/22/how-to-setup-lustre-file-system-and-run-postgres-on-it/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/07/22/how-to-setup-lustre-file-system-and-run-postgres-on-it/" class="post-title-link" itemprop="url">How to setup Lustre file system and run Postgres on it</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-07-22 01:00:00 / Modified: 13:31:56" itemprop="dateCreated datePublished" datetime="2022-07-22T01:00:00-07:00">2022-07-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/parallel/" itemprop="url" rel="index">
+                    <span itemprop="name">parallel</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/parallel/distributed/" itemprop="url" rel="index">
+                    <span itemprop="name">distributed</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/parallel/distributed/file/" itemprop="url" rel="index">
+                    <span itemprop="name">file</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/parallel/distributed/file/system/" itemprop="url" rel="index">
+                    <span itemprop="name">system</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/parallel/distributed/file/system/storage/" itemprop="url" rel="index">
+                    <span itemprop="name">storage</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-postgres-on-lustre.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Similar to PostgreSQL, Lustre file system is also an open source project which started about 20 years ago. According to <a href="https://en.wikipedia.org/wiki/Lustre_(file_system)" target="_blank" rel="noopener">Wikipedia</a>, Lustre file system is a type of parallel distributed file system, and is designed for large-scale cluster computing with native Remote Direct Memory Access (RDMA) support. Lustre file systems are scalable and can be part of multiple computer clusters with tens of thousands of client nodes, tens of petabytes (PB) of storage on hundreds of servers, and more than a terabyte per second (TB/s) of aggregate I/O throughput. This blog will explain how to setup a simple Lustre file system on CentOS 7 and run PostgreSQL on it.</p>
+<h4 id="2-Lustre-file-system"><a href="#2-Lustre-file-system" class="headerlink" title="2. Lustre file system"></a>2. Lustre file system</h4><p>To deliver parallel file access and improve I/O performance, Lustre file system separates out metadata services and data services. From high level architecture point of view, Lustre file system contains below basic components:<br>Management Server (MGS), provides configuration information about how the file system is configured, notifies clients about changes in the file system configuration and plays a role in the Lustre recovery process.<br>Metadata Server (MDS),  manages the file system namespace and provides metadata services to clients such as filename lookup, directory information, file layouts, and access permissions.<br>Metadata Target (MDT), stores metadata information, and holds the root information of the file system.<br>Object Storage Server (OSS), stores file data objects and makes the file contents available to Lustre clients.<br>Object Storage Target (OST), stores the contents of user files.<br>Lustre Client, mounts the Lustre file system and makes the contents of the namespace visible to the users.<br>Lustre Networking (LNet) - a network protocol used for communication between Lustre clients and servers with native RDMA supported.<br>If you want to know more details inside Lustre, you can refer to <a href="https://wiki.lustre.org/Understanding_Lustre_Internals" target="_blank" rel="noopener">Understanding Lustre Internals</a>.</p>
+<h4 id="3-Setup-Lustre-on-CentOS-7"><a href="#3-Setup-Lustre-on-CentOS-7" class="headerlink" title="3. Setup Lustre on CentOS 7"></a>3. Setup Lustre on CentOS 7</h4><p>To setup a simple Lustre file system for PostgreSQL, we need to have 4 machines: MGS-MDS-MDT server, OSS-OST server, Lustre client1 and client2 (Postgres Servers). In this blog, I used three CentOS 7 virtual machines with below network settings:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">MGS-MDS-MDT: 10.10.1.1</span><br><span class="line">OSS-OST: 10.10.1.2</span><br><span class="line">Client1&#x2F;PG Server: 10.10.1.10</span><br><span class="line">Client2&#x2F;PG Server: 10.10.1.20</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="3-1-Install-Lustre"><a href="#3-1-Install-Lustre" class="headerlink" title="3.1. Install Lustre"></a>3.1. Install Lustre</h5><p>To avoid dealing with Firewall and SELinux policy issues, I simply disabled them like below,<br>Set <code>SELINUX=disabled</code> in /etc/selinux/config, and run commands,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl disable firewalld</span><br></pre></td></tr></table></figure>
+
+<p>Add Lustre release information to <code>/etc/yum.repos.d/lustre.repo</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">[lustre-server]</span><br><span class="line">name&#x3D;CentOS-$releasever - Lustre</span><br><span class="line">baseurl&#x3D;https:&#x2F;&#x2F;build.whamcloud.com&#x2F;job&#x2F;lustre-master&#x2F;arch&#x3D;x86_64%2Cbuild_type&#x3D;server%2Cdistro&#x3D;el7%2Cib_stack&#x3D;inkernel&#x2F;lastStableBuild&#x2F;artifact&#x2F;artifacts&#x2F;</span><br><span class="line">baseurl&#x3D;https:&#x2F;&#x2F;downloads.whamcloud.com&#x2F;public&#x2F;lustre&#x2F;latest-release&#x2F;el7&#x2F;server&#x2F;</span><br><span class="line">gpgcheck&#x3D;0</span><br><span class="line"></span><br><span class="line">[e2fsprogs]</span><br><span class="line">name&#x3D;CentOS-$releasever - Ldiskfs</span><br><span class="line">baseurl&#x3D;https:&#x2F;&#x2F;build.whamcloud.com&#x2F;job&#x2F;e2fsprogs-master&#x2F;arch&#x3D;x86_64%2Cdistro&#x3D;el7&#x2F;lastStableBuild&#x2F;artifact&#x2F;_topdir&#x2F;RPMS&#x2F;</span><br><span class="line">baseurl&#x3D;https:&#x2F;&#x2F;downloads.whamcloud.com&#x2F;public&#x2F;e2fsprogs&#x2F;latest&#x2F;el7&#x2F;</span><br><span class="line">gpgcheck&#x3D;0</span><br><span class="line"></span><br><span class="line">[lustre-client]</span><br><span class="line">name&#x3D;CentOS-$releasever - Lustre</span><br><span class="line">baseurl&#x3D;https:&#x2F;&#x2F;build.whamcloud.com&#x2F;job&#x2F;lustre-master&#x2F;arch&#x3D;x86_64%2Cbuild_type&#x3D;client%2Cdistro&#x3D;el7%2Cib_stack&#x3D;inkernel&#x2F;lastStableBuild&#x2F;artifact&#x2F;artifacts&#x2F;</span><br><span class="line">baseurl&#x3D;https:&#x2F;&#x2F;downloads.whamcloud.com&#x2F;public&#x2F;lustre&#x2F;latest-release&#x2F;el7.9.2009&#x2F;client&#x2F;</span><br><span class="line">gpgcheck&#x3D;0</span><br></pre></td></tr></table></figure>
+<p>Then update yum and install the filesystem utilities <code>e2fsprogs</code> to deal with ext4</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum update &amp;&amp; yum upgrade -y e2fsprogs</span><br></pre></td></tr></table></figure>
+<p>If there is no errors, then install Lustre server and tools with <code>yum install -y lustre-tests</code></p>
+<h5 id="3-2-Setup-lnet-network"><a href="#3-2-Setup-lnet-network" class="headerlink" title="3.2. Setup lnet network"></a>3.2. Setup lnet network</h5><p>Depends on your network interfaces setup, add the lnet configuration correspondingly. For example, all my 3 CentOS 7 has a network interface <code>enp0s8</code>, therefore, I added the configuration <code>options lnet networks=&quot;tcp0(enp0s8)&quot;</code> to <code>/etc/modprobe.d/lnet.conf</code> as my Lustre lnet network configuration.</p>
+<p>Then we need to load the lnet driver to the kernel, and start the lnet network by running below commands,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">modprobe lustre</span><br><span class="line">lsmod | grep lustre</span><br><span class="line">modprobe lnet</span><br><span class="line">lsmod | grep lnet</span><br><span class="line">lctl network up</span><br></pre></td></tr></table></figure>
+
+<p>You can check if the lnet network is running on your Ethernet interface using command <code>lctl list_nids</code>, and you should see something like below,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">10.10.1.1@tcp</span><br></pre></td></tr></table></figure>
+<p>You can try to ping other Lustre servers over the lnet network by running command <code>lctl ping 10.10.1.2@tcp1</code>. If the lnet network is working, then you should see below output,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">12345-0@lo</span><br><span class="line">12345-10.10.1.2@tcp</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="3-3-Setup-MGS-MDS-MDT-and-OSS-OST-servers"><a href="#3-3-Setup-MGS-MDS-MDT-and-OSS-OST-servers" class="headerlink" title="3.3. Setup MGS/MDS/MDT and OSS/OST servers"></a>3.3. Setup MGS/MDS/MDT and OSS/OST servers</h5><p>To set up the storage for MGS/MDS/MDT server, I added one dedicated virtual disk (/dev/sdb), created one partition (/dev/sdb1) and formatted it to ext4. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fdisk &#x2F;dev&#x2F;sdb</span><br><span class="line">...</span><br><span class="line">mkfs -t ext4 &#x2F;dev&#x2F;sdb1</span><br></pre></td></tr></table></figure>
+<p>You need to repeat the same process on OSS/OST server to add actual files storage disk.</p>
+<p>If everything goes fine, then it is time to mount the disk on Lustre servers. First, we need to mount the disk on MGS/MDS/MDT server by running below command,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkfs.lustre --reformat --fsname&#x3D;lustrefs --mgs --mdt --index&#x3D;0 &#x2F;dev&#x2F;sdb1</span><br><span class="line">mkdir &#x2F;mgsmdt_mount</span><br><span class="line">mount -t lustre &#x2F;dev&#x2F;sdb1 &#x2F;mgsmdt_mount</span><br></pre></td></tr></table></figure>
+
+<p>Second, we mount the disk on OSS/OST server using below commands,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkfs.lustre --reformat --ost --fsname&#x3D;lustrefs --mgsnode&#x3D;10.10.1.1@tcp1 --index&#x3D;0 &#x2F;dev&#x2F;sdb1</span><br><span class="line">mkdir &#x2F;ostoss_mount </span><br><span class="line">mount -t lustre &#x2F;dev&#x2F;sdb1 &#x2F;ostoss_mount</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="3-4-Setup-Lustre-clients"><a href="#3-4-Setup-Lustre-clients" class="headerlink" title="3.4. Setup Lustre clients"></a>3.4. Setup Lustre clients</h5><p>After the Luster server’s setup is done, we can simply mount the lustre file system on client by running below commands, </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mkdir &#x2F;mnt&#x2F;lustre</span><br><span class="line">mount -t lustre 10.10.1.1@tcp0:&#x2F;lustrefs &#x2F;mnt&#x2F;lustre</span><br></pre></td></tr></table></figure>
+<p>If no error, then you can verify it by creating a text file and entering some information from one client, and check it from another client.</p>
+<h5 id="3-5-Setup-Postgres-on-Lustre-file-system"><a href="#3-5-Setup-Postgres-on-Lustre-file-system" class="headerlink" title="3.5. Setup Postgres on Lustre file system"></a>3.5. Setup Postgres on Lustre file system</h5><p>As there are some many tutorials about how to setup Postgres on CentOS, I will skip this part. Assume you have installed Postgres either from an “official release” or compiled from the source code yourself, then run below tests from client1,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">initdb -D &#x2F;mnt&#x2F;lustre&#x2F;pgdata</span><br><span class="line">pg_ctl -D &#x2F;mnt&#x2F;lustre&#x2F;pgdata -l &#x2F;tmp&#x2F;logfile start</span><br><span class="line">create table test(a int, b text);</span><br><span class="line">insert into test values(generate_series(1, 1000), &#39;helloworld&#39;);</span><br><span class="line">select count(*) from test;</span><br><span class="line">pg_ctl -D &#x2F;mnt&#x2F;lustre&#x2F;pgdata -l &#x2F;tmp&#x2F;logfile stop</span><br><span class="line">&#96;&#96;&#96;  </span><br><span class="line"></span><br><span class="line">Then run below commands from client2,</span><br></pre></td></tr></table></figure>
+<p>pg_ctl -D /mnt/lustre/pgdata -l /tmp/logfile start<br>select count(*) from test;<br>pg_ctl -D /mnt/lustre/pgdata -l /tmp/logfile stop</p>
+<pre><code>From the above simple tests, you can confirm that the table created and records inserted by client1 are stored on remote Lustre file system, and if Postgres server stop on client1, then you can start Postgres server on client2 and query all the records inserted by client1. 
+
+
+#### 4. Summary
+In this blog, I explained how to set up a parallel distributed file system - Lustre on a local environment, and verify it with PostgreSQL servers. I hope this blog can help you if you want to evaluate some distributed file systems.</code></pre>
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -199,7 +343,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2022-06-24 01:00:00 / Modified: 12:39:49" itemprop="dateCreated datePublished" datetime="2022-06-24T01:00:00-07:00">2022-06-24</time>
+              <time title="Created: 2022-06-24 01:00:00 / Modified: 12:49:35" itemprop="dateCreated datePublished" datetime="2022-06-24T01:00:00-07:00">2022-06-24</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -256,22 +400,25 @@
       
           <p><img src="/images/img/fi-remote-access-buffer-blocks.png" alt="Featured image"></p>
 <h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>PostgreSQL is a great open source project for many reasons. One of the reasons I like it is because of the design of buffer blocks addressing. In this blog, I am going to explain a possible way to share a Primary’s buffer blocks with a Standby. If you want to know more about how buffer tag works, you can refer to my <a href="https://www.highgo.ca/2021/07/23/the-amazing-buffer-tag-in-postgresql/" target="_blank" rel="noopener">previous blog</a>.</p>
-<h4 id="2-Primary-and-Standby"><a href="#2-Primary-and-Standby" class="headerlink" title="2. Primary and Standby"></a>2. Primary and Standby</h4><p>In Postgres, a Primary is an active database which accepts connections and performs read-write SQL operations; a Standby is a copy of the active database, and it also accepts connection but only for read SQL operations. Because the Standby needs to perform the ‘copy’ action in order to synchronize with Primary database, technically they are not exactly <code>equal</code> if a SQL query is time sensitive. Then, can we let a Standby to be <code>equal</code> to a Primary? </p>
+<h4 id="2-Primary-and-Standby"><a href="#2-Primary-and-Standby" class="headerlink" title="2. Primary and Standby"></a>2. Primary and Standby</h4><p>In Postgres, a Primary is an active database which accepts connections and performs read-write SQL operations; a Standby is a copy of the active database, and it also accepts connection but only for read-only SQL operations. Because the Standby needs to perform the ‘copy’ action in order to synchronize with Primary database, technically they are not exactly <code>equal</code> if a SQL query is time sensitive. Then, the question is can we let a Standby to be <code>equal</code> to a Primary? </p>
 <p>The answer is <code>probably!</code>. I recently did some experimental tests to see if a Standby can access Primary’s buffer blocks in order to check the data which has not been replicated yet. The results is very positive.</p>
 <h4 id="3-How-to-share-it"><a href="#3-How-to-share-it" class="headerlink" title="3. How to share it"></a>3. How to share it</h4><p>To achieve this experimental remote buffer blocks access, here are a few things I did:<br>On Primary side,</p>
 <ol>
-<li>starts a simple dedicated TCP/IP server to listen for the buffer tag request from Standby</li>
-<li>checks if the buffer block in memory for received buffer tag</li>
+<li>start a simple dedicated TCP/IP server to listen for the buffer tag request from Standby</li>
+<li>check if the buffer block in memory for received buffer tag</li>
 <li>If found and dirty then sends the 8KB buffer block to Standby</li>
-<li>If not found then simply answer not found<br>On Standby side,</li>
+<li>If not found then simply answer not found</li>
+</ol>
+<p>On Standby side,</p>
+<ol>
 <li>add a simple TCP/IP client for buffer manager</li>
 <li>send buffer tag request to Primary when buffer manager needs to load a data block from disk</li>
-<li>add 8KB data block to buffer if received from Primary</li>
-<li>if no data block from Primary then load data from disk</li>
+<li>add 8KB data block to shared buffer if received from Primary</li>
+<li>load data block from disk if buffer block not found on Primary </li>
 <li>skip buffer tag check to avoid use cashed data blocks</li>
 </ol>
-<p>With these basic changes, a Standby can access Primary’s buffer block and get the same query results even the data has not been replicated yet (in my experimental test, I actually skip the head redo on Standby and let Standby to access Primary’s base cluster, disable the storage write actives).</p>
-<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I introduced a way to experiment the access of Primary’s buffer blocks, and hope this can be a topic for continues study if someone want to learn PostgreSQL in deep.</p>
+<p>With these basic changes, a Standby can access Primary’s buffer blocks and get the same query results even the data has not been replicated yet (in my experimental test, I actually also skip the head redo on Standby and let Standby to access Primary’s base cluster, disable the storage write actives).</p>
+<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, I introduced a way to experiment the access of Primary’s buffer blocks, and hope this can be a topic for further study if someone want to learn PostgreSQL in deep.</p>
 
       
     </div>
@@ -1255,129 +1402,6 @@
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/" class="post-title-link" itemprop="url">How batch insertion was done in postgres_fdw</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-              
-
-              <time title="Created: 2021-08-20 01:00:00 / Modified: 16:10:46" itemprop="dateCreated datePublished" datetime="2021-08-20T01:00:00-07:00">2021-08-20</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/" itemprop="url" rel="index">
-                    <span itemprop="name">foreign data wrapper</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/" itemprop="url" rel="index">
-                    <span itemprop="name">fdw</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/" itemprop="url" rel="index">
-                    <span itemprop="name">bulk</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/insert/" itemprop="url" rel="index">
-                    <span itemprop="name">insert</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi_bulk_insertion.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>postgres_fdw has been existing in PostgreSQL for many years, and it was one of the most popular interfaces used in many extensions. such as the <a href="https://wiki.postgresql.org/wiki/Foreign_data_wrappers" target="_blank" rel="noopener">PostgreSQL foreign data wrappers wiki page</a>, and <a href="https://pgxn.org/tag/fdw/" target="_blank" rel="noopener">PostgreSQL Extension Network/PGXN</a>. However, I had not touched this postgres_fdw in deep until I got a task about combing multiple columns from multiple tables using this amazing Foreign Data Wrapper interface. After some hack, I was be able to combine multiple columns from multiple tables into one table based on postgres_fdw, but I was just curious about how many enhancements has been done recently. After a simple git pull, I found actually there are some new features was introduced in PG14, such as Asynchronous Execution, Bulk Inserts, Truncate as well as some network connection related enhancement. In this blog, I will take a detail look at one of the enhancements, i.e. Bulk insertion, to see how it was implemented.</p>
-<h4 id="2-A-detail-looks-at-bulk-insertion"><a href="#2-A-detail-looks-at-bulk-insertion" class="headerlink" title="2. A detail looks at bulk insertion"></a>2. A detail looks at bulk insertion</h4><p>I haven’t performed any benchmark test for bulk inserts in postgres_fdw to compare before and after yet, but you can find a very nice blog <a href="https://www.percona.com/blog/2021/05/27/new-features-in-postgresql-14-bulk-inserts-for-foreign-data-wrappers/" target="_blank" rel="noopener">here</a> as your reference, if I have time I will definitely run some benchmark test on a production server. For now, let’s take a look to see how it was implemented.</p>
-<p>The first commit was done early 2021, and here is the details information about this features.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">commit b663a4136331de6c7364226e3dbf7c88bfee7145</span><br><span class="line">Author: Tomas Vondra &lt;tomas.vondra@postgresql.org&gt;</span><br><span class="line">Date:   Wed Jan 20 23:05:46 2021 +0100</span><br><span class="line"></span><br><span class="line">    Implement support for bulk inserts in postgres_fdw</span><br><span class="line">    </span><br><span class="line">    Extends the FDW API to allow batching inserts into foreign tables. That</span><br><span class="line">    is usually much more efficient than inserting individual rows, due to</span><br><span class="line">    high latency for each round-trip to the foreign server.</span><br><span class="line">    </span><br><span class="line">    It was possible to implement something similar in the regular FDW API,</span><br><span class="line">    but it was inconvenient and there were issues with reporting the number</span><br><span class="line">    of actually inserted rows etc. This extends the FDW API with two new</span><br><span class="line">    functions:</span><br><span class="line">    </span><br><span class="line">    * GetForeignModifyBatchSize - allows the FDW picking optimal batch size</span><br><span class="line">    </span><br><span class="line">    * ExecForeignBatchInsert - inserts a batch of rows at once</span><br><span class="line">    </span><br><span class="line">    Currently, only INSERT queries support batching. Support for DELETE and</span><br><span class="line">    UPDATE may be added in the future.</span><br><span class="line">    </span><br><span class="line">    This also implements batching for postgres_fdw. The batch size may be</span><br><span class="line">    specified using &quot;batch_size&quot; option both at the server and table level.</span><br><span class="line">    </span><br><span class="line">    The initial patch version was written by me, but it was rewritten and</span><br><span class="line">    improved in many ways by Takayuki Tsunakawa.</span><br><span class="line">    </span><br><span class="line">    Author: Takayuki Tsunakawa</span><br><span class="line">    Reviewed-by: Tomas Vondra, Amit Langote</span><br><span class="line">    Discussion: https:&#x2F;&#x2F;postgr.es&#x2F;m&#x2F;20200628151002.7x5laxwpgvkyiu3q@development</span><br><span class="line">&#96;&#96;&#96; </span><br><span class="line"></span><br><span class="line">As the author commented, two major functions, i.e. &#96;postgresGetForeignModifyBatchSize&#96; and &#96;postgresExecForeignBatchInsert&#96; were introduced to postgres_fdw to hook up with the extended FDW API. The extended FDW API can be found in &#96;src&#x2F;include&#x2F;foreign&#x2F;fdwapi.h&#96;.</span><br><span class="line"></span><br><span class="line">The corresponding implementation was done in &#96;contrib&#x2F;postgres_fdw&#x2F;postgres_fdw.c&#96;. </span><br><span class="line">Single row insertion</span><br></pre></td></tr></table></figure>
-<p>static TupleTableSlot *<br>postgresExecForeignInsert(EState *estate,<br>                          ResultRelInfo *resultRelInfo,<br>                          TupleTableSlot *slot,<br>                          TupleTableSlot *planSlot)</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vs. batch rows insertion</span><br></pre></td></tr></table></figure>
-<p>static TupleTableSlot **<br>postgresExecForeignBatchInsert(EState <em>estate,<br>                          ResultRelInfo *resultRelInfo,<br>                          TupleTableSlot *</em>slots,<br>                          TupleTableSlot **planSlots,<br>                          int *numSlots)</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Function postgresExecForeignBatchInsert support multiple slots, planSlots as well as a new parameter, i.e. numSlots. So that it can insert multiple rows in one round communication to save the network communication overhead.</span><br></pre></td></tr></table></figure>
-<p>static int<br>postgresGetForeignModifyBatchSize(ResultRelInfo *resultRelInfo)</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">The function basically allows to retrieve the number of row remote server will support in bulk insertion. Here, as the function has a note, if there is trigger defined for remote table with AFTER ROW or with RETURNING required, the bulk insertion is not allowed, otherwise the rule will be broken on remote server side.</span><br><span class="line"></span><br><span class="line">Other than these two major new functions, there are some update in other functions, such as, &#96;execute_foreign_modify&#96;, which will build the bulk insertion query when it received insert operation, something like below.</span><br></pre></td></tr></table></figure>
-<pre><code>if (operation == CMD_INSERT &amp;&amp; fmstate-&gt;num_slots != *numSlots)</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">and another important change is &#96;convert_prep_stmt_params&#96; which has a loop to build the number of rows that server can accept.</span><br></pre></td></tr></table></figure>
-<pre><code>for (i = 0; i &lt; numSlots; i++)</code></pre><pre><code>
-Then rest of the changes are mainly to support the bulk insertion features, such as parse the `batch_size` in option. Another new function, `rebuildInsertSql` in `deparse.c` is used in `execute_foreign_modify` to build the actual number of rows before sending the query to remote server.
-
-
-#### 3. Limitation
-
-As it was mentioned in the commit message, only insertion is supported for bulk operations, delete and update are not supported yet. Hopefully, these bulk operations and interfaces can be added soon. So that, there will be even more extensions using FDW interface in the future.
-
-
-
-#### 4. Summary
-In this blog, we discussed a key performance improvement in postgres_fdw, i.e. bulk insertion and take a detail look at the source code level. I hope it can help when someone want to add a new feature to postgres_fdw or any continue improvement on bulk insertion.
-
-
-_**Reference:**_
-1. [F.35. postgres_fdw](https://www.postgresql.org/docs/14/postgres-fdw.html)
-2. [Faster Bulk Insertion to Foreign Tables - Introduction to PostgreSQL 14 Committed Features](http://postgres-road.blogspot.com/2021/03/faster-bulk-insertion-to-foreign-tables.html)
-3. [New Features in PostgreSQL 14: Bulk Inserts for Foreign Data Wrappers](https://www.percona.com/blog/2021/05/27/new-features-in-postgresql-14-bulk-inserts-for-foreign-data-wrappers/)
-</code></pre>
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1450,12 +1474,12 @@ _**Reference:**_
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">25</span>
+          <span class="site-state-item-count">26</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">72</span>
+        <span class="site-state-item-count">76</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>

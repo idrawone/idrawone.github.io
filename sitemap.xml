@@ -2,9 +2,16 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://idrawone.github.io/2022/07/22/how-to-setup-lustre-file-system-and-run-postgres-on-it/</loc>
+    
+    <lastmod>2022-07-22T20:31:56.729Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://idrawone.github.io/2022/06/24/one-idea-of-accessing-primarys-buffer-blocks/</loc>
     
-    <lastmod>2022-06-24T19:39:49.647Z</lastmod>
+    <lastmod>2022-06-24T19:49:35.536Z</lastmod>
     
   </url>
   

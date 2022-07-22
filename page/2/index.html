@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">25</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">26</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,129 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/08/20/a-new-feature-walk-through-on-postgres-fdw-from-commits/" class="post-title-link" itemprop="url">How batch insertion was done in postgres_fdw</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2021-08-20 01:00:00 / Modified: 16:10:46" itemprop="dateCreated datePublished" datetime="2021-08-20T01:00:00-07:00">2021-08-20</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/" itemprop="url" rel="index">
+                    <span itemprop="name">foreign data wrapper</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/" itemprop="url" rel="index">
+                    <span itemprop="name">fdw</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/" itemprop="url" rel="index">
+                    <span itemprop="name">bulk</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/insert/" itemprop="url" rel="index">
+                    <span itemprop="name">insert</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi_bulk_insertion.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>postgres_fdw has been existing in PostgreSQL for many years, and it was one of the most popular interfaces used in many extensions. such as the <a href="https://wiki.postgresql.org/wiki/Foreign_data_wrappers" target="_blank" rel="noopener">PostgreSQL foreign data wrappers wiki page</a>, and <a href="https://pgxn.org/tag/fdw/" target="_blank" rel="noopener">PostgreSQL Extension Network/PGXN</a>. However, I had not touched this postgres_fdw in deep until I got a task about combing multiple columns from multiple tables using this amazing Foreign Data Wrapper interface. After some hack, I was be able to combine multiple columns from multiple tables into one table based on postgres_fdw, but I was just curious about how many enhancements has been done recently. After a simple git pull, I found actually there are some new features was introduced in PG14, such as Asynchronous Execution, Bulk Inserts, Truncate as well as some network connection related enhancement. In this blog, I will take a detail look at one of the enhancements, i.e. Bulk insertion, to see how it was implemented.</p>
+<h4 id="2-A-detail-looks-at-bulk-insertion"><a href="#2-A-detail-looks-at-bulk-insertion" class="headerlink" title="2. A detail looks at bulk insertion"></a>2. A detail looks at bulk insertion</h4><p>I haven’t performed any benchmark test for bulk inserts in postgres_fdw to compare before and after yet, but you can find a very nice blog <a href="https://www.percona.com/blog/2021/05/27/new-features-in-postgresql-14-bulk-inserts-for-foreign-data-wrappers/" target="_blank" rel="noopener">here</a> as your reference, if I have time I will definitely run some benchmark test on a production server. For now, let’s take a look to see how it was implemented.</p>
+<p>The first commit was done early 2021, and here is the details information about this features.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">commit b663a4136331de6c7364226e3dbf7c88bfee7145</span><br><span class="line">Author: Tomas Vondra &lt;tomas.vondra@postgresql.org&gt;</span><br><span class="line">Date:   Wed Jan 20 23:05:46 2021 +0100</span><br><span class="line"></span><br><span class="line">    Implement support for bulk inserts in postgres_fdw</span><br><span class="line">    </span><br><span class="line">    Extends the FDW API to allow batching inserts into foreign tables. That</span><br><span class="line">    is usually much more efficient than inserting individual rows, due to</span><br><span class="line">    high latency for each round-trip to the foreign server.</span><br><span class="line">    </span><br><span class="line">    It was possible to implement something similar in the regular FDW API,</span><br><span class="line">    but it was inconvenient and there were issues with reporting the number</span><br><span class="line">    of actually inserted rows etc. This extends the FDW API with two new</span><br><span class="line">    functions:</span><br><span class="line">    </span><br><span class="line">    * GetForeignModifyBatchSize - allows the FDW picking optimal batch size</span><br><span class="line">    </span><br><span class="line">    * ExecForeignBatchInsert - inserts a batch of rows at once</span><br><span class="line">    </span><br><span class="line">    Currently, only INSERT queries support batching. Support for DELETE and</span><br><span class="line">    UPDATE may be added in the future.</span><br><span class="line">    </span><br><span class="line">    This also implements batching for postgres_fdw. The batch size may be</span><br><span class="line">    specified using &quot;batch_size&quot; option both at the server and table level.</span><br><span class="line">    </span><br><span class="line">    The initial patch version was written by me, but it was rewritten and</span><br><span class="line">    improved in many ways by Takayuki Tsunakawa.</span><br><span class="line">    </span><br><span class="line">    Author: Takayuki Tsunakawa</span><br><span class="line">    Reviewed-by: Tomas Vondra, Amit Langote</span><br><span class="line">    Discussion: https:&#x2F;&#x2F;postgr.es&#x2F;m&#x2F;20200628151002.7x5laxwpgvkyiu3q@development</span><br><span class="line">&#96;&#96;&#96; </span><br><span class="line"></span><br><span class="line">As the author commented, two major functions, i.e. &#96;postgresGetForeignModifyBatchSize&#96; and &#96;postgresExecForeignBatchInsert&#96; were introduced to postgres_fdw to hook up with the extended FDW API. The extended FDW API can be found in &#96;src&#x2F;include&#x2F;foreign&#x2F;fdwapi.h&#96;.</span><br><span class="line"></span><br><span class="line">The corresponding implementation was done in &#96;contrib&#x2F;postgres_fdw&#x2F;postgres_fdw.c&#96;. </span><br><span class="line">Single row insertion</span><br></pre></td></tr></table></figure>
+<p>static TupleTableSlot *<br>postgresExecForeignInsert(EState *estate,<br>                          ResultRelInfo *resultRelInfo,<br>                          TupleTableSlot *slot,<br>                          TupleTableSlot *planSlot)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vs. batch rows insertion</span><br></pre></td></tr></table></figure>
+<p>static TupleTableSlot **<br>postgresExecForeignBatchInsert(EState <em>estate,<br>                          ResultRelInfo *resultRelInfo,<br>                          TupleTableSlot *</em>slots,<br>                          TupleTableSlot **planSlots,<br>                          int *numSlots)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Function postgresExecForeignBatchInsert support multiple slots, planSlots as well as a new parameter, i.e. numSlots. So that it can insert multiple rows in one round communication to save the network communication overhead.</span><br></pre></td></tr></table></figure>
+<p>static int<br>postgresGetForeignModifyBatchSize(ResultRelInfo *resultRelInfo)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">The function basically allows to retrieve the number of row remote server will support in bulk insertion. Here, as the function has a note, if there is trigger defined for remote table with AFTER ROW or with RETURNING required, the bulk insertion is not allowed, otherwise the rule will be broken on remote server side.</span><br><span class="line"></span><br><span class="line">Other than these two major new functions, there are some update in other functions, such as, &#96;execute_foreign_modify&#96;, which will build the bulk insertion query when it received insert operation, something like below.</span><br></pre></td></tr></table></figure>
+<pre><code>if (operation == CMD_INSERT &amp;&amp; fmstate-&gt;num_slots != *numSlots)</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">and another important change is &#96;convert_prep_stmt_params&#96; which has a loop to build the number of rows that server can accept.</span><br></pre></td></tr></table></figure>
+<pre><code>for (i = 0; i &lt; numSlots; i++)</code></pre><pre><code>
+Then rest of the changes are mainly to support the bulk insertion features, such as parse the `batch_size` in option. Another new function, `rebuildInsertSql` in `deparse.c` is used in `execute_foreign_modify` to build the actual number of rows before sending the query to remote server.
+
+
+#### 3. Limitation
+
+As it was mentioned in the commit message, only insertion is supported for bulk operations, delete and update are not supported yet. Hopefully, these bulk operations and interfaces can be added soon. So that, there will be even more extensions using FDW interface in the future.
+
+
+
+#### 4. Summary
+In this blog, we discussed a key performance improvement in postgres_fdw, i.e. bulk insertion and take a detail look at the source code level. I hope it can help when someone want to add a new feature to postgres_fdw or any continue improvement on bulk insertion.
+
+
+_**Reference:**_
+1. [F.35. postgres_fdw](https://www.postgresql.org/docs/14/postgres-fdw.html)
+2. [Faster Bulk Insertion to Foreign Tables - Introduction to PostgreSQL 14 Committed Features](http://postgres-road.blogspot.com/2021/03/faster-bulk-insertion-to-foreign-tables.html)
+3. [New Features in PostgreSQL 14: Bulk Inserts for Foreign Data Wrappers](https://www.percona.com/blog/2021/05/27/new-features-in-postgresql-14-bulk-inserts-for-foreign-data-wrappers/)
+</code></pre>
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1331,177 +1454,6 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/04/17/Replicate-multiple-PostgreSQL-servers-to-a-single-MongoDB-server-using-logical-decoding-output-plugin/" class="post-title-link" itemprop="url">Replicate multiple PostgreSQL servers to a single MongoDB server using logical decoding output plugin</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-              
-
-              <time title="Created: 2020-04-17 04:00:00 / Modified: 14:39:05" itemprop="dateCreated datePublished" datetime="2020-04-17T04:00:00-07:00">2020-04-17</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/" itemprop="url" rel="index">
-                    <span itemprop="name">Replication</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/Logical/" itemprop="url" rel="index">
-                    <span itemprop="name">Logical</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/" itemprop="url" rel="index">
-                    <span itemprop="name">Decoding</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/" itemprop="url" rel="index">
-                    <span itemprop="name">Plugin</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/" itemprop="url" rel="index">
-                    <span itemprop="name">MongoDB</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/Docker/" itemprop="url" rel="index">
-                    <span itemprop="name">Docker</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/Replication/Logical/Decoding/Plugin/MongoDB/Docker/Compose/" itemprop="url" rel="index">
-                    <span itemprop="name">Compose</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/w2m-docker-fi.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>“Postgres, is a free and open-source relational database management system (RDBMS) emphasizing extensibility and SQL compliance.” This is the highlight of PostgreSQL in a sentence from Wikipedia. Yes, the extensibility of PostgreSQL is extremely useful when you have some special requirements. This blog will discuss how to use logical decoding output plugin to replicate multiple PostgreSQL servers to a single MongoDB server and the environment setup using docker compose for a quick Proof of Concept.</p>
-<h4 id="2-Logical-decoding-output-plugin"><a href="#2-Logical-decoding-output-plugin" class="headerlink" title="2. Logical decoding output plugin"></a>2. Logical decoding output plugin</h4><p>Start from version 9.5, PostgreSQL provides a solution to allow users to write their own decoding logic to reformat the output before sending it to the subscriber through a wal sender. This feature is called logical decoding output plugin. With this feature, other applications can get a specific data format from PostgreSQL database easily, and then use their own existing tools or algorithms to continue the data analysis. For example, replicating multiple Postgres servers to a single MongoDB server and then perform the real-time analytics and data visualization in MongoDB. There are many different decoding plugins available at <a href="https://wiki.postgresql.org/wiki/Logical_Decoding_Plugins" target="_blank" rel="noopener">here</a>, however <a href="https://github.com/HighgoSoftware/wal2mongo" target="_blank" rel="noopener"><code>wal2mongo</code></a> is only one can generate a JavaScript format data that can be used by MongoDB directly. You can use it following this blog to practice how data replication can be done from multiple Postgres databases to a MongoDB database using logical decoding output plugin.</p>
-<ul>
-<li>Logical decoding output plugin framework</li>
-</ul>
-<p>The logical decoding output plugin framework has a few predefined callback <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html" target="_blank" rel="noopener">interfaces</a>. These callbacks are registered in an initialization function named <code>_PG_output_plugin_init</code>, which will be called when the plugin is loaded as a shared library. After hookup with these interfaces by referring to the example <a href="https://www.postgresql.org/docs/current/test-decoding.html" target="_blank" rel="noopener">test_decoding</a>, the output decoding plugin will get notified about the changes that is happening via various callback interfaces. In these callback interfaces, the one will get noticed each time when an insert, update or delete happens is <code>LogicalDecodeChangeCB</code>. Most of the output formatting related logic should be done in a function which is registered to this interface, such as, map a Postgres data type to a MongoDB native data type.<br>Before writing your own logical decoding plugin, two basic things need to be mentioned here: one is the change callback interface is triggered based on each row, i.e. if you have multiple rows changed in one transaction, then you will get multiple times call back; the other is that the callback is triggered only by the row changes that have been safely saved to WAL files. The changes that were rolled back by the transaction will not trigger the callback.</p>
-<ul>
-<li>wal2mongo decoding plugin</li>
-</ul>
-<p><code>wal2mongo</code> is a logical decoding plugin, it mainly converts the DML operation such as insert, update and delete into a JavaScript format which later can be imported into MongoDB by using <code>mongo</code> client.</p>
-<ul>
-<li>Logical decoding data changes flow<br><img src="/images/img/w2m-flow-chart.png" alt="flow chart image"><br>The diagram above shows the data changes flow. We can use <code>psql</code> client to simulate the Application and perform database operation such as create table, insert records, update records and then delete records. The Postgres server backend will save the database changes to WAL first and then notify the WAL sender. The WAL sender will read the changes from WAL and get the output decoded by <code>wal2mongo</code> and then send the changes to the connected subscriber, i.e <code>pg_recvlogical</code> in this blog. <code>pg_recvlogical</code> will save the output as a JavaScript file, then later it will be imported to MongoDB using <code>mongo</code> client.</li>
-</ul>
-<p>To exercise this, we need to change <code>wal_level</code> to <code>logical</code> and make sure <code>max_wal_senders</code> is at least <code>2</code>, then restart Postgres server after the changes.</p>
-<ul>
-<li>Example of <code>wal2mongo</code> output</li>
-</ul>
-<p><code>wal2mongo</code> is designed to replicate the data changes from Postgres to MongoDB, not like a Postgres standby which need to replicate everything. Therefore, the focus is on the mostly used DML operation such as INSERT, UPDATE and DELETE. The diagram below shows the steps inclduing create a table, insert some records, do some update, and then perform a delete and how the data output looks like. Here, you have to change the table replica identity to full, otherwise, you won’t be able to replicate the UPDATE correctly.<br><img src="/images/img/w2m-sequence-chart.png" alt="seq chart image"></p>
-<h4 id="2-Automatic-the-environment-setup-using-docker-compose"><a href="#2-Automatic-the-environment-setup-using-docker-compose" class="headerlink" title="2. Automatic the environment setup using docker compose"></a>2. Automatic the environment setup using docker compose</h4><p>Setup an environment like the one mentioned above to test a logical output plugin may take some time, especially when a user just wants to give a quickly try. I will introduce an easy way using docker to do the work. A Docker environment can be very useful when you want to practice a new technology which requires a complicated setup, or multiple machines to be available. It also help when you need such an environment from time to time, especially when you need it to be available “immediately” and then discard it after you finished your work.<br>To achieve such an environment with multiple Postgres servers and one MongoDB server, I built two docker images: one is a dedicated postgres with wal2mongo installed, and the other one is a dedicated mongod with the <code>pg_recvlogical</code> tools installed. Here is a cluster environment running on a sinlge physical machine using the files available at <a href="">here</a>.<br><img src="/images/img/w2m-docker-diagram.png" alt="docker image"></p>
-<ul>
-<li>Dockerfile for postgres<br>This Dockerfile is to build a docker image with the latest PostgreSQL 12.2 offical release and the <code>wal2mongo</code> installed.<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">FROM centos:centos7</span><br><span class="line">MAINTAINER The CentOS Project &lt;cloud-ops@centos.org&gt;</span><br><span class="line"></span><br><span class="line">RUN yum -y install https:&#x2F;&#x2F;download.postgresql.org&#x2F;pub&#x2F;repos&#x2F;yum&#x2F;reporpms&#x2F;EL-7-x86_64&#x2F;pgdg-redhat-repo-latest.noarch.rpm</span><br><span class="line">RUN yum -y update; yum -y install sudo epel-release yum-utils net-tools which \</span><br><span class="line">		postgresql12-server postgresql12 \</span><br><span class="line">		git gcc make clang zlib-devel readline-devel postgresql12-devel; yum clean all</span><br><span class="line"></span><br><span class="line">RUN usermod -aG wheel postgres</span><br><span class="line">RUN echo &quot;export PATH&#x3D;&#x2F;usr&#x2F;pgsql-12&#x2F;bin:$PATH&quot; | tee -a &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;.bashrc</span><br><span class="line">RUN echo &quot;postgres ALL&#x3D;(root) NOPASSWD:ALL&quot; &gt; &#x2F;etc&#x2F;sudoers.d&#x2F;postgres &amp;&amp; chmod 0440 &#x2F;etc&#x2F;sudoers.d&#x2F;postgres</span><br><span class="line"></span><br><span class="line">USER postgres</span><br><span class="line">RUN eval &quot;sudo -E env &quot;PATH&#x3D;$PATH&quot; USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no install&quot;</span><br><span class="line"></span><br><span class="line">VOLUME  [&quot;&#x2F;var&#x2F;log&#x2F;pgsql&quot;, &quot;&#x2F;var&#x2F;lib&#x2F;pgsql&quot;]</span><br><span class="line">EXPOSE 5432</span><br><span class="line"></span><br><span class="line">COPY run.sh .</span><br><span class="line">CMD [&quot;&#x2F;run.sh&quot;]</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<p>What inside the run.sh script is just a simple postgres start command. The way I used it here is to avoid rebuild the image when you want to start the container in different ways.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line">&#x2F;usr&#x2F;pgsql-12&#x2F;bin&#x2F;pg_ctl -D &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data -l &#x2F;var&#x2F;log&#x2F;pgsql&#x2F;logfile start</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>Dockfile for mongod<br>The dockerfile for mongod has the offical MongoDB 4.25 release and pg_recvlogical 12.2 installed.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">FROM centos:centos7</span><br><span class="line">MAINTAINER The CentOS Project &lt;cloud-ops@centos.org&gt;</span><br><span class="line"></span><br><span class="line">COPY mongodb.repo &#x2F;etc&#x2F;yum.repos.d&#x2F;</span><br><span class="line">RUN yum -y install mongodb-org-4.2.5 mongodb-org-server-4.2.5 	\</span><br><span class="line">		mongodb-org-shell-4.2.5 mongodb-org-mongos-4.2.5 		\</span><br><span class="line">		mongodb-org-tools-4.2.5 postgresql12-contrib; yum clean all</span><br><span class="line">RUN mkdir -p &#x2F;data&#x2F;db</span><br><span class="line"></span><br><span class="line">RUN usermod -aG wheel mongod</span><br><span class="line">RUN echo &quot;mongod ALL&#x3D;(root) NOPASSWD:ALL&quot; &gt; &#x2F;etc&#x2F;sudoers.d&#x2F;mongod &amp;&amp; \</span><br><span class="line">		chmod 0440 &#x2F;etc&#x2F;sudoers.d&#x2F;mongod</span><br><span class="line">RUN echo &quot;export PATH&#x3D;&#x2F;usr&#x2F;pgsql-12&#x2F;bin:$PATH&quot; | tee -a &#x2F;root&#x2F;.bashrc</span><br><span class="line">VOLUME  [&quot;&#x2F;data&#x2F;db&quot;, &quot;&#x2F;var&#x2F;log&#x2F;mongodb&quot;]</span><br><span class="line"></span><br><span class="line">EXPOSE 27017</span><br><span class="line">ENTRYPOINT [&quot;&#x2F;usr&#x2F;bin&#x2F;mongod&quot;, &quot;--bind_ip_all&quot;]</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Service compose file<br>The service docker compose file is to help setup two Postgres servers and one MongodDB servere, and make sure they are be able to communicate using hostname.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">version: &#39;3.0&#39;</span><br><span class="line"></span><br><span class="line">services:</span><br><span class="line">  mongo:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;mongod:4.2.5&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;27017:27017&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;mgdata:&#x2F;data&#x2F;db</span><br><span class="line">      - .&#x2F;scripts&#x2F;p2m.sh:&#x2F;p2m.sh</span><br><span class="line"></span><br><span class="line">  pg1:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;postgres:12.2&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;5432&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;pg1data:&#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data</span><br><span class="line">      - .&#x2F;scripts&#x2F;data_gen.sh:&#x2F;data_gen.sh</span><br><span class="line"></span><br><span class="line">  pg2:</span><br><span class="line">    restart: always</span><br><span class="line">    image: &quot;postgres:12.2&quot;</span><br><span class="line">    ports:</span><br><span class="line">      - &quot;5432&quot;</span><br><span class="line">    volumes:</span><br><span class="line">      - .&#x2F;data&#x2F;pg2data:&#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;12&#x2F;data</span><br><span class="line">      - .&#x2F;scripts&#x2F;data_gen.sh:&#x2F;data_gen.sh</span><br></pre></td></tr></table></figure>
-<p>You can easily extend the Postgres servers by adding more instances to this service docker compose file.</p>
-</li>
-</ul>
-<p>To build the containers, run command <code>docker-compose -f service-compose.yml up -d</code>. After a while, you should see two Postgres servers and one MongoDB server are running like below.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ docker ps</span><br><span class="line">CONTAINER ID        IMAGE                 COMMAND                  CREATED              STATUS              PORTS                      NAMES</span><br><span class="line">935a3d339e71        mongod:4.2.5          &quot;&#x2F;usr&#x2F;bin&#x2F;mongod --b…&quot;   About a minute ago   Up About a minute   0.0.0.0:27017-&gt;27017&#x2F;tcp   pg2mongo_mongo_1</span><br><span class="line">d9497be07ce5        postgres:12.2         &quot;&#x2F;run.sh&quot;                About a minute ago   Up About a minute   0.0.0.0:54322-&gt;5432&#x2F;tcp    pg2mongo_pg2_1</span><br><span class="line">50eb555b5719        postgres:12.2         &quot;&#x2F;run.sh&quot;                About a minute ago   Up 38 seconds       0.0.0.0:54321-&gt;5432&#x2F;tcp    pg2mongo_pg1_1</span><br></pre></td></tr></table></figure>
-
-<p>To setup the logical replication slot on each postgres server, and connect to each slot using <code>pg_recvlogical</code> then pipe the data changes to <code>mongo</code> client and feed the changes to MongoDB automaticlly, run a command like this <code>docker exec -it pg2mongo_mongo_1 bash /p2m.sh 1 2</code>. Where the <code>p2m.sh</code> is a simple demo script to allow you using <code>pg_recvlogical</code> to create slot, and connect to the slot then dump the message to a internal pipe. Then the <code>mongo</code> client will read the pipe and import the changes to MongoDB. You can check it by log into the mongod container and type a <code>ps -ef</code> to see the running services.</p>
-<ul>
-<li><p>Generate database changes<br>To simulate the data changes, you can use <code>pgbench</code>. There are two ways to do it: one is to log into each postgres instance and type the pgbench command; the other way is to map a local script to all postgres instances, then run the script from your host machine. For example <code>docker exec -it pg2mongo_pg1_1 bash /data_gen.sh</code></p>
-</li>
-<li><p>Verify the data changes<br>To verify the data changes, you can log into the mongod container, and then use the mongo cient to check the data changes imported automatically. For example,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&gt; use mycluster_postgres_w2m_slot2;</span><br><span class="line">switched to db mycluster_postgres_w2m_slot2</span><br><span class="line">&gt; db.pgbench_accounts.count();</span><br><span class="line">10028</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Modify the output plugin and reinstall it<br>You can log into any postgres server and find out the source code and make some changes, then recompile, install it and run a regression test, etc. For example,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">docker exec -it pg2mongo_pg1_1 bash</span><br><span class="line">bash-4.2$ cd &#x2F;var&#x2F;lib&#x2F;pgsql&#x2F;sources&#x2F;wal2mongo&#x2F;</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make clean CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ USE_PGXS&#x3D;1 make installcheck-force  CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no</span><br><span class="line">...</span><br><span class="line">bash-4.2$ sudo -E env &quot;PATH&#x3D;$PATH&quot; USE_PGXS&#x3D;1 make CLANG&#x3D;&#x2F;usr&#x2F;bin&#x2F;clang with_llvm&#x3D;no install</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h4 id="3-logical-decoding-output-plugin-limitations"><a href="#3-logical-decoding-output-plugin-limitations" class="headerlink" title="3. logical decoding output plugin limitations"></a>3. logical decoding output plugin limitations</h4><p>The logical decoding output plugin is pretty useful feature, but still has some limitations. For example,</p>
-<ul>
-<li>Only physical relation tables can trigger logical decoding callback, views and sequences cannot trigger</li>
-<li>The tables must have primary key and replica identity need to be set properly</li>
-<li>Database schemas are not be able to be replicated</li>
-<li>No large objects can be replicated<br>…</li>
-</ul>
-<h4 id="4-Summary"><a href="#4-Summary" class="headerlink" title="4. Summary"></a>4. Summary</h4><p>In this blog, we discussed how to use the logical decoding output plugin to replicate multiple PostgreSQL servers to a single MongoDB server, and provide a docker environment setup to perform a quick Proof Of Concept.</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1574,12 +1526,12 @@ After the <code>vacuum full</code>, there are some changes,<br>1) all dead tuple
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">25</span>
+          <span class="site-state-item-count">26</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">72</span>
+        <span class="site-state-item-count">76</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
