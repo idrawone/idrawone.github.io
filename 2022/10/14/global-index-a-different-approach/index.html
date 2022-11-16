@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewA few years ago, there was a proposal about adding the global index support to PostgreSQL for partitioned table. Following that proposal, there were many discussions and also an initial ve">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Global Index, a different approach">
+<meta property="og:url" content="https://idrawone.github.io/2022/10/14/global-index-a-different-approach/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewA few years ago, there was a proposal about adding the global index support to PostgreSQL for partitioned table. Following that proposal, there were many discussions and also an initial ve">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-postgres-on-lustre.png">
+<meta property="article:published_time" content="2022-10-14T08:00:00.000Z">
+<meta property="article:modified_time" content="2022-10-14T21:12:30.779Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-postgres-on-lustre.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2022/10/14/global-index-a-different-approach/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Global Index, a different approach | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">27</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/10/14/global-index-a-different-approach/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Global Index, a different approach
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-10-14 01:00:00 / Modified: 14:12:30" itemprop="dateCreated datePublished" datetime="2022-10-14T01:00:00-07:00">2022-10-14</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/" itemprop="url" rel="index">
+                    <span itemprop="name">global</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/" itemprop="url" rel="index">
+                    <span itemprop="name">index</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/" itemprop="url" rel="index">
+                    <span itemprop="name">partition</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/" itemprop="url" rel="index">
+                    <span itemprop="name">unique</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/" itemprop="url" rel="index">
+                    <span itemprop="name">performance</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi-postgres-on-lustre.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>A few years ago, there was a <a href="https://www.postgresql.org/message-id/CALtqXTcurqy1PKXzP9XO%3DofLLA5wBSo77BnUnYVEZpmcA3V0ag%40mail.gmail.com" target="_blank" rel="noopener">proposal</a> about adding the global index support to PostgreSQL for partitioned table. Following that proposal, there were many discussions and also an initial version <a href="https://www.postgresql.org/message-id/78E4E097-EEFE-4755-AAE4-97B60AD53B5B%40alibaba-inc.com" target="_blank" rel="noopener">POC</a> to demonstrate the possibility, the technical challenges and the potential benefits, etc. However, the global index feature is still not available in PostgreSQL official release yet. This blog is trying to share a different approach and hopefully it is can to be implemented to benefit some users.</p>
+<h4 id="2-Basic-global-index-requirement"><a href="#2-Basic-global-index-requirement" class="headerlink" title="2. Basic global index requirement"></a>2. Basic global index requirement</h4><p>There are many reasons to have this global index to be available on Postgres partitioned table, such as the performance enhancement for read-only queries across multiple partitions, the uniqueness of using non-partition key as index across multiple partitions, etc. For example, if users find out a table grow too fast and they have to split this table into partitions based on key1 while the applications are using key2 to retrieve data. In this case, with the global index available, they potentially can avoid the unnecessary changes to the applications. </p>
+<h4 id="3-Different-approaches"><a href="#3-Different-approaches" class="headerlink" title="3. Different approaches"></a>3. Different approaches</h4><p>To address this <code>global</code> index requirement, one POC in PostgreSQL community discussion was trying to store the global index in a single index relation. In this way, it definitely will have better performance as all the index tuples are stored in one index relation. However, one issue is that it will encounter the physical size limitation on one relation file. Another issue is that each detach needs to clean up this single global index relation and it is kind of violating one of the original partitioned table design ideas. As it was mentioned that one of the partitioned table design ideas is <code>to cheaply add and remove partitions</code>.</p>
+<p>Another approach is that we can consider to keep the <code>global</code> index relation stored separately based on partition key and add the logic to allow globally access the separated <code>global</code> index relation with uniqueness restriction on a non-partitioned key. In this approach, we keep the benefits of the original partitioned table design. One is the size limitation of one relation as we have <code>global</code> index relation stored separately, the other one is that it is easy to maintain the detach performance. For attaching partition, it will depend on whether it is an empty table or table with data or even index.</p>
+<p>The main idea of this approach is to use the existing feature by removing the restriction of must having partition key involved, and adds logic to handle the global uniqueness check on non-partition key and crossing partitions sort during index build.</p>
+<h4 id="4-Some-initial-tests"><a href="#4-Some-initial-tests" class="headerlink" title="4. Some initial tests"></a>4. Some initial tests</h4><p>Based on the second approach with some basic changes, here are some simple test results to share.</p>
+<h5 id="4-1-Setup-partitions"><a href="#4-1-Setup-partitions" class="headerlink" title="4.1. Setup partitions"></a>4.1. Setup partitions</h5><p>First, using pgbench to create 12 partitions and load data with scale 1000. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ pgbench -i -s 1000 --partitions&#x3D;12 --partition-method&#x3D;range -d postgres</span><br></pre></td></tr></table></figure>
+
+<h5 id="4-2-Setup-global-index"><a href="#4-2-Setup-global-index" class="headerlink" title="4.2. Setup global index"></a>4.2. Setup <code>global</code> index</h5><p>Second, create the <code>global</code> index without partition key (aid) restriction, but with global uniqueness check on non-partition key (bid). </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create unique index gidx on pgbench_accounts using btree(bid) global;</span><br></pre></td></tr></table></figure>
+
+<p>Here is how the schema looks like after a <code>global</code> index has been created.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# \d+ pgbench_accounts</span><br><span class="line">                                   Partitioned table &quot;public.pgbench_accounts&quot;</span><br><span class="line">  Column  |     Type      | Collation | Nullable | Default | Storage  | Compression | Stats target | Description </span><br><span class="line">----------+---------------+-----------+----------+---------+----------+-------------+--------------+-------------</span><br><span class="line"> aid      | integer       |           | not null |         | plain    |             |              | </span><br><span class="line"> bid      | integer       |           |          |         | plain    |             |              | </span><br><span class="line"> abalance | integer       |           |          |         | plain    |             |              | </span><br><span class="line"> filler   | character(84) |           |          |         | extended |             |              | </span><br><span class="line">Partition key: RANGE (aid)</span><br><span class="line">Indexes:</span><br><span class="line">    &quot;pgbench_accounts_pkey&quot; PRIMARY KEY, btree (aid)</span><br><span class="line">    &quot;gidx&quot; UNIQUE, btree (bid)</span><br><span class="line">Partitions: pgbench_accounts_1 FOR VALUES FROM (MINVALUE) TO (8333335),</span><br><span class="line">            pgbench_accounts_10 FOR VALUES FROM (75000007) TO (83333341),</span><br><span class="line">            pgbench_accounts_11 FOR VALUES FROM (83333341) TO (91666675),</span><br><span class="line">            pgbench_accounts_12 FOR VALUES FROM (91666675) TO (MAXVALUE),</span><br><span class="line">            pgbench_accounts_2 FOR VALUES FROM (8333335) TO (16666669),</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>To distinguish the <code>global</code> index relation from normal index relation, here we use <code>g</code> to replace <code>i</code>.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# select oid, relname, relnamespace, reltype, reloftype, relam, relfilenode, relpages, reltuples, relhasindex, relkind from pg_class where relnamespace&#x3D;2200 order by oid;</span><br><span class="line">  oid  |           relname           | relnamespace | reltype | reloftype | relam | relfilenode | relpages | reltuples | relhasindex | relkind </span><br><span class="line">-------+-----------------------------+--------------+---------+-----------+-------+-------------+----------+-----------+-------------+---------</span><br><span class="line"> 16690 | gidx                        |         2200 |       0 |         0 |   403 |           0 |        0 |              0 | f           | I</span><br><span class="line"> 16691 | pgbench_accounts_1_bid_idx  |         2200 |       0 |         0 |   403 |       16691 |    22852 |   8.333334e+06 | f           | g</span><br><span class="line"> 16692 | pgbench_accounts_2_bid_idx  |         2200 |       0 |         0 |   403 |       16692 |    22852 |   8.333334e+06 | f           | g</span><br><span class="line"> 16693 | pgbench_accounts_3_bid_idx  |         2200 |       0 |         0 |   403 |       16693 |    22852 |   8.333334e+06 | f           | g</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="4-3-Query-with-global-index"><a href="#4-3-Query-with-global-index" class="headerlink" title="4.3. Query with global index"></a>4.3. Query with <code>global</code> index</h5><p>Now, let’s run a simple query using non-partition key (bid) to compare the performance</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">   aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line"> 75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">Time: 2.243 ms</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# explain select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">                                                  QUERY PLAN                                                  </span><br><span class="line">--------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Append  (cost&#x3D;0.43..101.46 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_1_bid_idx on pgbench_accounts_1  (cost&#x3D;0.43..8.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_2_bid_idx on pgbench_accounts_2  (cost&#x3D;0.43..8.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>As the explain shows above, the index scan has been used.</p>
+<h5 id="4-4-Query-without-index"><a href="#4-4-Query-without-index" class="headerlink" title="4.4. Query without index"></a>4.4. Query without index</h5><p>Then, let’s drop the global index, and run the same query again,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# drop index gidx;</span><br><span class="line">DROP INDEX</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">   aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line"> 75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">Time: 8345.590 ms (00:08.346)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# explain select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">                                          QUERY PLAN                                          </span><br><span class="line">----------------------------------------------------------------------------------------------</span><br><span class="line"> Gather  (cost&#x3D;1000.00..2161189.59 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">   Workers Planned: 2</span><br><span class="line">   -&gt;  Parallel Append  (cost&#x3D;0.00..2160188.39 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">         -&gt;  Parallel Seq Scan on pgbench_accounts_1  (cost&#x3D;0.00..180015.78 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">               Filter: (bid &#x3D; 75000007)</span><br><span class="line">         -&gt;  Parallel Seq Scan on pgbench_accounts_2  (cost&#x3D;0.00..180015.78 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">               Filter: (bid &#x3D; 75000007)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>Here, we can see a big performance difference between with and without global index (2.243 ms vs. 8345.590 ms)</p>
+<h5 id="4-5-Query-with-index-having-partition-key-restriction"><a href="#4-5-Query-with-index-having-partition-key-restriction" class="headerlink" title="4.5. Query with index having partition-key restriction"></a>4.5. Query with index having partition-key restriction</h5><p>Now, let’s build an index with partition key (aid),</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create unique index lidx on pgbench_accounts using btree(aid, bid);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# create unique index lidx on pgbench_accounts using btree(aid, bid);</span><br><span class="line">CREATE INDEX</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">   aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line"> 75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">Time: 3312.177 ms (00:03.312)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# explain select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">                                                      QUERY PLAN                                                       </span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Append  (cost&#x3D;0.43..1846949.37 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_1_aid_bid_idx on pgbench_accounts_1  (cost&#x3D;0.43..153912.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_2_aid_bid_idx on pgbench_accounts_2  (cost&#x3D;0.43..153912.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br></pre></td></tr></table></figure>
+<p>With the same query, we still can see a big difference between <code>global</code> index and original index with partition key restriction (2.243 ms vs. 3312.177 ms).</p>
+<h5 id="4-6-Uniqueness-on-non-partition-key"><a href="#4-6-Uniqueness-on-non-partition-key" class="headerlink" title="4.6. Uniqueness on non-partition key"></a>4.6. Uniqueness on non-partition key</h5><p>Below examples are trying to demonstrate that without the uniqueness check on non-partition key offered by <code>global</code> index, a duplicated bid record insertion can’t not be blocked. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# insert into pgbench_accounts values(100000001, 75000007, 0, &#39;&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">    aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">-----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line">  75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line"> 100000001 | 75000007 |        0 |                                                                                     </span><br><span class="line">(2 rows)</span><br></pre></td></tr></table></figure>
+
+<p>However, with the uniqueness check on non-partition key offered by <code>global</code> index, the insertion of a duplicated bid record can be detected and blocked out.<br>postgres=# insert into pgbench_accounts values(100000001, 75000007, 0, ‘’);<br>ERROR:  duplicate key value violates unique constraint “pgbench_accounts_10_bid_idx”<br>DETAIL:  Key (bid)=(75000007) already exists.</p>
+<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I explained a different approach to achieve logical <code>global</code> index features but keep the physical storage separately, which can potential keep the original partitioned table design idea on PostgreSQL, and demonstrated the benefit of query performance and the uniqueness check on non-partition key.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/07/22/how-to-setup-lustre-file-system-and-run-postgres-on-it/" rel="prev" title="How to setup Lustre file system and run Postgres on it">
+      <i class="fa fa-chevron-left"></i> How to setup Lustre file system and run Postgres on it
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Basic-global-index-requirement"><span class="nav-number">2.</span> <span class="nav-text">2. Basic global index requirement</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Different-approaches"><span class="nav-number">3.</span> <span class="nav-text">3. Different approaches</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Some-initial-tests"><span class="nav-number">4.</span> <span class="nav-text">4. Some initial tests</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#4-1-Setup-partitions"><span class="nav-number">4.1.</span> <span class="nav-text">4.1. Setup partitions</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-2-Setup-global-index"><span class="nav-number">4.2.</span> <span class="nav-text">4.2. Setup global index</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-3-Query-with-global-index"><span class="nav-number">4.3.</span> <span class="nav-text">4.3. Query with global index</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-4-Query-without-index"><span class="nav-number">4.4.</span> <span class="nav-text">4.4. Query without index</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-5-Query-with-index-having-partition-key-restriction"><span class="nav-number">4.5.</span> <span class="nav-text">4.5. Query with index having partition-key restriction</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-6-Uniqueness-on-non-partition-key"><span class="nav-number">4.6.</span> <span class="nav-text">4.6. Uniqueness on non-partition key</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-Summary"><span class="nav-number">5.</span> <span class="nav-text">5. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">27</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">81</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">26</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">27</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,139 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/10/14/global-index-a-different-approach/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/10/14/global-index-a-different-approach/" class="post-title-link" itemprop="url">Global Index, a different approach</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-10-14 01:00:00 / Modified: 14:12:30" itemprop="dateCreated datePublished" datetime="2022-10-14T01:00:00-07:00">2022-10-14</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/" itemprop="url" rel="index">
+                    <span itemprop="name">global</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/" itemprop="url" rel="index">
+                    <span itemprop="name">index</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/" itemprop="url" rel="index">
+                    <span itemprop="name">partition</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/" itemprop="url" rel="index">
+                    <span itemprop="name">unique</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/" itemprop="url" rel="index">
+                    <span itemprop="name">performance</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-postgres-on-lustre.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>A few years ago, there was a <a href="https://www.postgresql.org/message-id/CALtqXTcurqy1PKXzP9XO%3DofLLA5wBSo77BnUnYVEZpmcA3V0ag%40mail.gmail.com" target="_blank" rel="noopener">proposal</a> about adding the global index support to PostgreSQL for partitioned table. Following that proposal, there were many discussions and also an initial version <a href="https://www.postgresql.org/message-id/78E4E097-EEFE-4755-AAE4-97B60AD53B5B%40alibaba-inc.com" target="_blank" rel="noopener">POC</a> to demonstrate the possibility, the technical challenges and the potential benefits, etc. However, the global index feature is still not available in PostgreSQL official release yet. This blog is trying to share a different approach and hopefully it is can to be implemented to benefit some users.</p>
+<h4 id="2-Basic-global-index-requirement"><a href="#2-Basic-global-index-requirement" class="headerlink" title="2. Basic global index requirement"></a>2. Basic global index requirement</h4><p>There are many reasons to have this global index to be available on Postgres partitioned table, such as the performance enhancement for read-only queries across multiple partitions, the uniqueness of using non-partition key as index across multiple partitions, etc. For example, if users find out a table grow too fast and they have to split this table into partitions based on key1 while the applications are using key2 to retrieve data. In this case, with the global index available, they potentially can avoid the unnecessary changes to the applications. </p>
+<h4 id="3-Different-approaches"><a href="#3-Different-approaches" class="headerlink" title="3. Different approaches"></a>3. Different approaches</h4><p>To address this <code>global</code> index requirement, one POC in PostgreSQL community discussion was trying to store the global index in a single index relation. In this way, it definitely will have better performance as all the index tuples are stored in one index relation. However, one issue is that it will encounter the physical size limitation on one relation file. Another issue is that each detach needs to clean up this single global index relation and it is kind of violating one of the original partitioned table design ideas. As it was mentioned that one of the partitioned table design ideas is <code>to cheaply add and remove partitions</code>.</p>
+<p>Another approach is that we can consider to keep the <code>global</code> index relation stored separately based on partition key and add the logic to allow globally access the separated <code>global</code> index relation with uniqueness restriction on a non-partitioned key. In this approach, we keep the benefits of the original partitioned table design. One is the size limitation of one relation as we have <code>global</code> index relation stored separately, the other one is that it is easy to maintain the detach performance. For attaching partition, it will depend on whether it is an empty table or table with data or even index.</p>
+<p>The main idea of this approach is to use the existing feature by removing the restriction of must having partition key involved, and adds logic to handle the global uniqueness check on non-partition key and crossing partitions sort during index build.</p>
+<h4 id="4-Some-initial-tests"><a href="#4-Some-initial-tests" class="headerlink" title="4. Some initial tests"></a>4. Some initial tests</h4><p>Based on the second approach with some basic changes, here are some simple test results to share.</p>
+<h5 id="4-1-Setup-partitions"><a href="#4-1-Setup-partitions" class="headerlink" title="4.1. Setup partitions"></a>4.1. Setup partitions</h5><p>First, using pgbench to create 12 partitions and load data with scale 1000. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ pgbench -i -s 1000 --partitions&#x3D;12 --partition-method&#x3D;range -d postgres</span><br></pre></td></tr></table></figure>
+
+<h5 id="4-2-Setup-global-index"><a href="#4-2-Setup-global-index" class="headerlink" title="4.2. Setup global index"></a>4.2. Setup <code>global</code> index</h5><p>Second, create the <code>global</code> index without partition key (aid) restriction, but with global uniqueness check on non-partition key (bid). </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create unique index gidx on pgbench_accounts using btree(bid) global;</span><br></pre></td></tr></table></figure>
+
+<p>Here is how the schema looks like after a <code>global</code> index has been created.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# \d+ pgbench_accounts</span><br><span class="line">                                   Partitioned table &quot;public.pgbench_accounts&quot;</span><br><span class="line">  Column  |     Type      | Collation | Nullable | Default | Storage  | Compression | Stats target | Description </span><br><span class="line">----------+---------------+-----------+----------+---------+----------+-------------+--------------+-------------</span><br><span class="line"> aid      | integer       |           | not null |         | plain    |             |              | </span><br><span class="line"> bid      | integer       |           |          |         | plain    |             |              | </span><br><span class="line"> abalance | integer       |           |          |         | plain    |             |              | </span><br><span class="line"> filler   | character(84) |           |          |         | extended |             |              | </span><br><span class="line">Partition key: RANGE (aid)</span><br><span class="line">Indexes:</span><br><span class="line">    &quot;pgbench_accounts_pkey&quot; PRIMARY KEY, btree (aid)</span><br><span class="line">    &quot;gidx&quot; UNIQUE, btree (bid)</span><br><span class="line">Partitions: pgbench_accounts_1 FOR VALUES FROM (MINVALUE) TO (8333335),</span><br><span class="line">            pgbench_accounts_10 FOR VALUES FROM (75000007) TO (83333341),</span><br><span class="line">            pgbench_accounts_11 FOR VALUES FROM (83333341) TO (91666675),</span><br><span class="line">            pgbench_accounts_12 FOR VALUES FROM (91666675) TO (MAXVALUE),</span><br><span class="line">            pgbench_accounts_2 FOR VALUES FROM (8333335) TO (16666669),</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>To distinguish the <code>global</code> index relation from normal index relation, here we use <code>g</code> to replace <code>i</code>.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# select oid, relname, relnamespace, reltype, reloftype, relam, relfilenode, relpages, reltuples, relhasindex, relkind from pg_class where relnamespace&#x3D;2200 order by oid;</span><br><span class="line">  oid  |           relname           | relnamespace | reltype | reloftype | relam | relfilenode | relpages | reltuples | relhasindex | relkind </span><br><span class="line">-------+-----------------------------+--------------+---------+-----------+-------+-------------+----------+-----------+-------------+---------</span><br><span class="line"> 16690 | gidx                        |         2200 |       0 |         0 |   403 |           0 |        0 |              0 | f           | I</span><br><span class="line"> 16691 | pgbench_accounts_1_bid_idx  |         2200 |       0 |         0 |   403 |       16691 |    22852 |   8.333334e+06 | f           | g</span><br><span class="line"> 16692 | pgbench_accounts_2_bid_idx  |         2200 |       0 |         0 |   403 |       16692 |    22852 |   8.333334e+06 | f           | g</span><br><span class="line"> 16693 | pgbench_accounts_3_bid_idx  |         2200 |       0 |         0 |   403 |       16693 |    22852 |   8.333334e+06 | f           | g</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="4-3-Query-with-global-index"><a href="#4-3-Query-with-global-index" class="headerlink" title="4.3. Query with global index"></a>4.3. Query with <code>global</code> index</h5><p>Now, let’s run a simple query using non-partition key (bid) to compare the performance</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">   aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line"> 75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">Time: 2.243 ms</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# explain select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">                                                  QUERY PLAN                                                  </span><br><span class="line">--------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Append  (cost&#x3D;0.43..101.46 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_1_bid_idx on pgbench_accounts_1  (cost&#x3D;0.43..8.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_2_bid_idx on pgbench_accounts_2  (cost&#x3D;0.43..8.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>As the explain shows above, the index scan has been used.</p>
+<h5 id="4-4-Query-without-index"><a href="#4-4-Query-without-index" class="headerlink" title="4.4. Query without index"></a>4.4. Query without index</h5><p>Then, let’s drop the global index, and run the same query again,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# drop index gidx;</span><br><span class="line">DROP INDEX</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">   aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line"> 75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">Time: 8345.590 ms (00:08.346)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# explain select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">                                          QUERY PLAN                                          </span><br><span class="line">----------------------------------------------------------------------------------------------</span><br><span class="line"> Gather  (cost&#x3D;1000.00..2161189.59 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">   Workers Planned: 2</span><br><span class="line">   -&gt;  Parallel Append  (cost&#x3D;0.00..2160188.39 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">         -&gt;  Parallel Seq Scan on pgbench_accounts_1  (cost&#x3D;0.00..180015.78 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">               Filter: (bid &#x3D; 75000007)</span><br><span class="line">         -&gt;  Parallel Seq Scan on pgbench_accounts_2  (cost&#x3D;0.00..180015.78 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">               Filter: (bid &#x3D; 75000007)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>Here, we can see a big performance difference between with and without global index (2.243 ms vs. 8345.590 ms)</p>
+<h5 id="4-5-Query-with-index-having-partition-key-restriction"><a href="#4-5-Query-with-index-having-partition-key-restriction" class="headerlink" title="4.5. Query with index having partition-key restriction"></a>4.5. Query with index having partition-key restriction</h5><p>Now, let’s build an index with partition key (aid),</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create unique index lidx on pgbench_accounts using btree(aid, bid);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">postgres&#x3D;# create unique index lidx on pgbench_accounts using btree(aid, bid);</span><br><span class="line">CREATE INDEX</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">   aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line"> 75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line">(1 row)</span><br><span class="line"></span><br><span class="line">Time: 3312.177 ms (00:03.312)</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# explain select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">                                                      QUERY PLAN                                                       </span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Append  (cost&#x3D;0.43..1846949.37 rows&#x3D;12 width&#x3D;97)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_1_aid_bid_idx on pgbench_accounts_1  (cost&#x3D;0.43..153912.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br><span class="line">   -&gt;  Index Scan using pgbench_accounts_2_aid_bid_idx on pgbench_accounts_2  (cost&#x3D;0.43..153912.45 rows&#x3D;1 width&#x3D;97)</span><br><span class="line">         Index Cond: (bid &#x3D; 75000007)</span><br></pre></td></tr></table></figure>
+<p>With the same query, we still can see a big difference between <code>global</code> index and original index with partition key restriction (2.243 ms vs. 3312.177 ms).</p>
+<h5 id="4-6-Uniqueness-on-non-partition-key"><a href="#4-6-Uniqueness-on-non-partition-key" class="headerlink" title="4.6. Uniqueness on non-partition key"></a>4.6. Uniqueness on non-partition key</h5><p>Below examples are trying to demonstrate that without the uniqueness check on non-partition key offered by <code>global</code> index, a duplicated bid record insertion can’t not be blocked. </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# insert into pgbench_accounts values(100000001, 75000007, 0, &#39;&#39;);</span><br><span class="line">INSERT 0 1</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# select * from pgbench_accounts where bid&#x3D;75000007;</span><br><span class="line">    aid    |   bid    | abalance |                                        filler                                        </span><br><span class="line">-----------+----------+----------+--------------------------------------------------------------------------------------</span><br><span class="line">  75000007 | 75000007 |        0 |                                                                                     </span><br><span class="line"> 100000001 | 75000007 |        0 |                                                                                     </span><br><span class="line">(2 rows)</span><br></pre></td></tr></table></figure>
+
+<p>However, with the uniqueness check on non-partition key offered by <code>global</code> index, the insertion of a duplicated bid record can be detected and blocked out.<br>postgres=# insert into pgbench_accounts values(100000001, 75000007, 0, ‘’);<br>ERROR:  duplicate key value violates unique constraint “pgbench_accounts_10_bid_idx”<br>DETAIL:  Key (bid)=(75000007) already exists.</p>
+<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I explained a different approach to achieve logical <code>global</code> index features but keep the physical storage separately, which can potential keep the original partitioned table design idea on PostgreSQL, and demonstrated the benefit of query performance and the uniqueness check on non-partition key.</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1264,144 +1397,6 @@ In this blog, I explained how to set up a parallel distributed file system - Lus
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/09/17/a-quick-test-for-postgres-fdw-batch-insertion/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/09/17/a-quick-test-for-postgres-fdw-batch-insertion/" class="post-title-link" itemprop="url">A quick test for postgres_fdw batch insertion</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-              
-
-              <time title="Created: 2021-09-17 01:00:00 / Modified: 16:20:32" itemprop="dateCreated datePublished" datetime="2021-09-17T01:00:00-07:00">2021-09-17</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/" itemprop="url" rel="index">
-                    <span itemprop="name">foreign data wrapper</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/" itemprop="url" rel="index">
-                    <span itemprop="name">fdw</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/" itemprop="url" rel="index">
-                    <span itemprop="name">bulk</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/batch/" itemprop="url" rel="index">
-                    <span itemprop="name">batch</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/foreign-data-wrapper/fdw/bulk/batch/insert/" itemprop="url" rel="index">
-                    <span itemprop="name">insert</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi_bulk_insertion.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>In my previous <a href="https://www.highgo.ca/2021/08/20/how-batch-insertion-was-done-in-postgres_fdw/" target="_blank" rel="noopener">blog</a>, I briefly walked through how the bulk/batch insertion was done for postgres_fdw in PG14. In this blog, I am going to run some basic tests to compare the performance for before and after the batch insertion was introduced in postgres_fdw, so that we can have a general idea about whether this feature makes any difference.</p>
-<h4 id="2-PG-Servers-Setup"><a href="#2-PG-Servers-Setup" class="headerlink" title="2. PG Servers Setup"></a>2. PG Servers Setup</h4><p>The key of the blog is to see if there is any difference for batch insertion. To make the testing simple, here is how I set up a simple environment. </p>
-<p>As this bulk/batch insertion was introduced for PG14, so we need to switch to the stable PG14 branch, i.e. REL_14_STABLE. After checked out the source code, simply run the commands: <code>configure, make and make install</code>. Here are the commands used in this blog.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">.&#x2F;configure --prefix&#x3D;$HOME&#x2F;sandbox&#x2F;postgres&#x2F;pgapp --enable-tap-tests --enable-debug CFLAGS&#x3D;&quot;-g3 -O0&quot;</span><br><span class="line">make &amp;&amp; make install</span><br><span class="line">cd contrib&#x2F;postgres_fdw&#x2F;</span><br><span class="line">make &amp;&amp; make install</span><br><span class="line">export PGDATA&#x3D;$HOME&#x2F;sandbox&#x2F;postgres&#x2F;pgdata</span><br><span class="line">initdb -D $PGDATA</span><br><span class="line">pg_ctl -D $PGDATA -l logfile start</span><br></pre></td></tr></table></figure>
-
-<p>In order to test Foreign Data Wrapper, we need to start another PG Server. To make it easy, I simply start a PG Server on a Foreign data cluster and change the default port to a different one, for example, <code>5433</code>. Below are the commands used to setup Foreign Server.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export FPGDATA&#x3D;$HOME&#x2F;sandbox&#x2F;postgres&#x2F;pgdata2</span><br><span class="line">initdb -D $FPGDATA</span><br></pre></td></tr></table></figure>
-
-<p>After the Foreign data cluster has been initialized, change the port to 5433, then start the Foreign PG Server.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">vim $FPGDATA&#x2F;postgresql.conf </span><br><span class="line">pg_ctl -D $FPGDATA -l logfile-f start</span><br></pre></td></tr></table></figure>
-
-
-<h4 id="3-Foreign-Tables-Setup"><a href="#3-Foreign-Tables-Setup" class="headerlink" title="3. Foreign Tables Setup"></a>3. Foreign Tables Setup</h4><p>Now, we can setup the basic Foreign Data Wrapper testing environment like below.</p>
-<p>On the Local PG Server:</p>
-<h5 id="3-1-Create-a-Foreign-Server-using-default-batch-settings"><a href="#3-1-Create-a-Foreign-Server-using-default-batch-settings" class="headerlink" title="3.1. Create a Foreign Server using default batch settings"></a>3.1. Create a Foreign Server using default batch settings</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create server fs foreign data wrapper postgres_fdw options (dbname &#39;postgres&#39;, host &#39;127.0.0.1&#39;, port &#39;5433&#39;);</span><br><span class="line">CREATE SERVER</span><br></pre></td></tr></table></figure>
-
-<h5 id="3-2-Create-the-user-mapping"><a href="#3-2-Create-the-user-mapping" class="headerlink" title="3.2. Create the user mapping"></a>3.2. Create the user mapping</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create user mapping for david server fs options( user &#39;david&#39;);</span><br><span class="line">CREATE USER MAPPING</span><br></pre></td></tr></table></figure>
-
-<h5 id="3-3-Create-Foreign-Tables-on-Local-PG-Server"><a href="#3-3-Create-Foreign-Tables-on-Local-PG-Server" class="headerlink" title="3.3. Create Foreign Tables on Local PG Server"></a>3.3. Create Foreign Tables on Local PG Server</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create foreign table ft (id int, test text) server fs options(table_name &#39;t&#39;);</span><br><span class="line">CREATE FOREIGN TABLE</span><br></pre></td></tr></table></figure>
-<p>By default, the batch insertion size has been set to 1 as you can see from the source code.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;*</span><br><span class="line"> * Determine batch size for a given foreign table. The option specified for</span><br><span class="line"> * a table has precedence.</span><br><span class="line"> *&#x2F;</span><br><span class="line">static int</span><br><span class="line">get_batch_size_option(Relation rel)</span><br><span class="line">&#123;</span><br><span class="line">...</span><br><span class="line">    &#x2F;* we use 1 by default, which means &quot;no batching&quot; *&#x2F;</span><br><span class="line">    int         batch_size &#x3D; 1;</span><br></pre></td></tr></table></figure>
-
-<p>Now, repeate the process to create another two Foreign Tables with different batch size correspondingly, i.e. 10 and 100.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# create foreign table ft_batch10 (id int, test text) server fs options(batch_size &#39;10&#39;, table_name &#39;t10&#39;);</span><br><span class="line">CREATE FOREIGN TABLE</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# create foreign table ft_batch100 (id int, test text) server fs options(batch_size &#39;100&#39;, table_name &#39;t100&#39;);</span><br><span class="line">CREATE FOREIGN TABLE</span><br></pre></td></tr></table></figure>
-
-
-<h5 id="3-4-Create-Tables-on-Foreign-Server"><a href="#3-4-Create-Tables-on-Foreign-Server" class="headerlink" title="3.4. Create Tables on Foreign Server"></a>3.4. Create Tables on Foreign Server</h5><p>On the Foreign PG Server side, create corresponding tables like below. Notes, you need to make the table names match the ones used in Local PG Server.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">psql -d postgres -p 5433</span><br><span class="line">postgres&#x3D;# create table t (id int, test text);</span><br><span class="line">CREATE TABLE</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# create table t10 (id int, test text);</span><br><span class="line">CREATE TABLE</span><br><span class="line"></span><br><span class="line">postgres&#x3D;# create table t100 (id int, test text);</span><br><span class="line">CREATE TABLE</span><br></pre></td></tr></table></figure>
-
-<h4 id="4-Run-the-tests"><a href="#4-Run-the-tests" class="headerlink" title="4. Run the tests"></a>4. Run the tests</h4><p>Now, enable the timeing on Local PG Server, and simply run the commands below, and then record the timing for comparison.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">postgres&#x3D;# \timing </span><br><span class="line">Timing is on.</span><br><span class="line"></span><br><span class="line">insert into ft values(generate_series(1,1000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft;</span><br><span class="line">delete from ft ;</span><br><span class="line">insert into ft values(generate_series(1,1000000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft;</span><br><span class="line">delete from ft ;</span><br><span class="line">insert into ft values(generate_series(1,100000000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft;</span><br><span class="line">delete from ft ;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">insert into ft_batch10 values(generate_series(1,1000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft_batch10;</span><br><span class="line">delete from ft_batch10 ;</span><br><span class="line">insert into ft_batch10 values(generate_series(1,1000000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft_batch10;</span><br><span class="line">delete from ft_batch10 ;</span><br><span class="line">insert into ft_batch10 values(generate_series(1,100000000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft_batch10;</span><br><span class="line">delete from ft_batch10 ;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">insert into ft_batch100 values(generate_series(1,1000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft_batch100;</span><br><span class="line">delete from ft_batch100 ;</span><br><span class="line">insert into ft_batch100 values(generate_series(1,1000000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft_batch100;</span><br><span class="line">delete from ft_batch100 ;</span><br><span class="line">insert into ft_batch100 values(generate_series(1,100000000),&#39;hello, world&#39;);</span><br><span class="line">select count(*) from ft_batch100;</span><br><span class="line">delete from ft_batch100 ;</span><br></pre></td></tr></table></figure>
-
-
-<h4 id="5-Check-the-results"><a href="#5-Check-the-results" class="headerlink" title="5. Check the results"></a>5. Check the results</h4><p>Here are results from about tests.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1                               10                          100                         </span><br><span class="line">55.634 ms                       9.996 ms                    25.545 ms </span><br><span class="line">32155.960 ms (00:32.156)        5927.090 ms (00:05.927)     4754.158 ms (00:04.754) </span><br><span class="line">3237972.881 ms (53:57.973)      623204.920 ms (10:23.205)   332998.911 ms (05:32.999)</span><br></pre></td></tr></table></figure>
-
-
-<h4 id="6-Summary"><a href="#6-Summary" class="headerlink" title="6. Summary"></a>6. Summary</h4><p>In this blog, we simply run some basic tests to see if there is any performance improvement in postgres_fdw for the batch/bulk insertion. The results are very impressive: for 1k insertion, batch size 10 and 100 are 5 and 2 times and faster relatively; for 1 million insertion, batch size 10 and 100 are 5.5 and 6.5 times faser; for 100 millions insertion, batch size 10 and 100 are 5 and 9.5 times better.</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1474,12 +1469,12 @@ In this blog, I explained how to set up a parallel distributed file system - Lus
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">26</span>
+          <span class="site-state-item-count">27</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">76</span>
+        <span class="site-state-item-count">81</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
