@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('https://idrawone.github.io').hostname,
+    root: '/',
+    scheme: 'Gemini',
+    version: '7.7.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: true,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: 'search.xml',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="1. OverviewFollowed my previous blog, Global Index, a different approach, we posted our initial Global Unique Index POC to Postgres community for open discussion about this approach. Now, this blog i">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Global Index, benchmark with pgbench">
+<meta property="og:url" content="https://idrawone.github.io/2022/11/24/global-index-benchmark-with-pgbench/index.html">
+<meta property="og:site_name" content="David&#39;s Blog">
+<meta property="og:description" content="1. OverviewFollowed my previous blog, Global Index, a different approach, we posted our initial Global Unique Index POC to Postgres community for open discussion about this approach. Now, this blog i">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://idrawone.github.io/images/img/fi-postgres-on-lustre.png">
+<meta property="article:published_time" content="2022-11-24T08:00:00.000Z">
+<meta property="article:modified_time" content="2022-11-25T20:19:45.000Z">
+<meta property="article:author" content="David Zhang">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://idrawone.github.io/images/img/fi-postgres-on-lustre.png">
+
+<link rel="canonical" href="https://idrawone.github.io/2022/11/24/global-index-benchmark-with-pgbench/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>Global Index, benchmark with pgbench | David's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="David's Blog" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">David's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">28</span></a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/11/24/global-index-benchmark-with-pgbench/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Global Index, benchmark with pgbench
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2022-11-24 00:00:00" itemprop="dateCreated datePublished" datetime="2022-11-24T00:00:00-08:00">2022-11-24</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2022-11-25 12:19:45" itemprop="dateModified" datetime="2022-11-25T12:19:45-08:00">2022-11-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/" itemprop="url" rel="index">
+                    <span itemprop="name">global</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/" itemprop="url" rel="index">
+                    <span itemprop="name">index</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/" itemprop="url" rel="index">
+                    <span itemprop="name">partition</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/" itemprop="url" rel="index">
+                    <span itemprop="name">unique</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/" itemprop="url" rel="index">
+                    <span itemprop="name">performance</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/pgbench/" itemprop="url" rel="index">
+                    <span itemprop="name">pgbench</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/pgbench/benchmark/" itemprop="url" rel="index">
+                    <span itemprop="name">benchmark</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/img/fi-postgres-on-lustre.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Followed my previous blog, <a href="https://www.highgo.ca/2022/10/14/global-index-a-different-approach/" target="_blank" rel="noopener">Global Index, a different approach</a>, we posted our initial Global Unique Index POC to Postgres community for open discussion about this approach. Now, this blog is trying to explain how the benchmark was performed using pgbench on this initial <a href="https://www.postgresql.org/message-id/184879c5306.12490ea581628934.7312528450011769010@highgo.ca" target="_blank" rel="noopener">Global Unique Index POC</a>.</p>
+<h4 id="2-Build-global-index"><a href="#2-Build-global-index" class="headerlink" title="2. Build global index"></a>2. Build global index</h4><p>Before running the performance benchmark tests, here is steps about how to build Global Unique Index from the initial POC.</p>
+<h1 id="clone-the-repository-from-github"><a href="#clone-the-repository-from-github" class="headerlink" title="clone the repository from github,"></a>clone the repository from github,</h1><p>git clone <a href="https://github.com/postgres/postgres.git" target="_blank" rel="noopener">https://github.com/postgres/postgres.git</a></p>
+<h1 id="checkout-a-particular-commit-to-apply-global-index-patches"><a href="#checkout-a-particular-commit-to-apply-global-index-patches" class="headerlink" title="checkout a particular commit to apply global index patches"></a>checkout a particular commit to apply global index patches</h1><p>git check 85d8b30724c0fd117a683cc72706f71b28463a05 -b global-index</p>
+<h1 id="apply-global-index-patches-from-POC"><a href="#apply-global-index-patches-from-POC" class="headerlink" title="apply global index patches from POC"></a>apply global index patches from POC</h1><p>git apply 0001-support-global-unique-index-with-non-partition-key.patch<br>git apply 0002-support-global-unique-index-create.patch<br>git apply 0003-support-global-unique-index-attach-and-detach.patch<br>git apply 0004-support-global-unique-index-insert-and-update.patch</p>
+<h1 id="configure-compile-and-install"><a href="#configure-compile-and-install" class="headerlink" title="configure, compile and install"></a>configure, compile and install</h1><p>./configure –prefix=/media/disk1/globalindex –enable-tap-tests –enable-debug “CFLAGS=-g3 -O0 -fno-omit-frame-pointer” “CC=gcc -std=gnu99”<br>./make clean &amp;&amp; make &amp;&amp; make install </p>
+<h4 id="3-Test-with-pgbench"><a href="#3-Test-with-pgbench" class="headerlink" title="3. Test with pgbench"></a>3. Test with pgbench</h4><p>Our Global Unique Index is designed to address the requirement <code>to access a partitioned table using non-partition column with an unique index</code>. In another words, users can build a cross-partition (globally) unique index without partition-key for select, insert, update and delete.</p>
+<p>The goal is to test the performance using pgbench, however, only <code>aid</code> in <code>pgbench_accounts</code> is designed to be unique, and it is also used as partition-key. To test unique with pgbench, we prepare the data with below 5 steps,</p>
+<p>1) initiate the data without partition;<br>2) recreate four pgbench tables after the original tables has renamed;<br>3) create partitions using <code>bid</code> as partition-key;<br>4) attach all partitions to pgbench_accounts table;<br>5) import the data from renamed tables correspondingly.<br>Here is a simple script to achieve the above 5 steps, <code>cat init-gi.sh</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line"></span><br><span class="line">## default scale, 100</span><br><span class="line">SCALE&#x3D;$&#123;1:-100&#125;</span><br><span class="line"></span><br><span class="line">## 1,000,000 tuples per partition</span><br><span class="line">PART&#x3D;$(( $&#123;SCALE&#125;&#x2F;10 ))</span><br><span class="line"></span><br><span class="line">## pgbench init</span><br><span class="line">pgbench -i -s $SCALE postgres</span><br><span class="line"></span><br><span class="line">## backup tables and data</span><br><span class="line">psql -d postgres -c &quot;alter table pgbench_accounts rename to pgbench_accounts_bak; alter table pgbench_branches rename to pgbench_branches_bak; alter table pgbench_history rename to pgbench_history_bak; alter table pgbench_tellers rename to pgbench_tellers_bak;&quot;</span><br><span class="line"></span><br><span class="line">## create partitions using bid as partition key so that aid can be used for global unique index test</span><br><span class="line">psql -d postgres -c &quot;CREATE TABLE public.pgbench_accounts (aid integer NOT NULL, bid integer, abalance integer, filler character(84)) PARTITION BY RANGE (bid);&quot;</span><br><span class="line">for ((i&#x3D;0; i&lt;$PART; i++))</span><br><span class="line">do</span><br><span class="line">   psql -d postgres -c &quot;CREATE TABLE public.pgbench_accounts_$i (aid integer NOT NULL, bid integer, abalance integer, filler character(84));&quot;</span><br><span class="line">   psql -d postgres -c &quot;ALTER TABLE ONLY public.pgbench_accounts ATTACH PARTITION public.pgbench_accounts_$i FOR VALUES FROM ($(( $i*10+1 ))) TO ($(( ($i+1)*10+1 )));&quot;</span><br><span class="line">done</span><br><span class="line"></span><br><span class="line">## add default partition</span><br><span class="line">psql -d postgres -c &quot;CREATE TABLE public.pgbench_accounts_default(aid integer NOT NULL, bid integer, abalance integer, filler character(84));&quot;</span><br><span class="line">psql -d postgres -c &quot;ALTER TABLE ONLY public.pgbench_accounts ATTACH PARTITION public.pgbench_accounts_default FOR VALUES FROM ($(( $i*10+1 ))) TO (MAXVALUE);&quot;</span><br><span class="line"></span><br><span class="line">## recreate other tables</span><br><span class="line">psql -d postgres -c &quot;CREATE TABLE public.pgbench_branches (bid integer NOT NULL, bbalance integer, filler character(88)); CREATE TABLE public.pgbench_history (tid integer, bid integer, aid integer, delta integer, mtime timestamp without time zone, filler character(22)); CREATE TABLE public.pgbench_tellers (tid integer NOT NULL, bid integer, tbalance integer, filler character(84));&quot;</span><br><span class="line"></span><br><span class="line">## import data from backup</span><br><span class="line">psql -d postgres -c &quot;insert into pgbench_accounts select * from pgbench_accounts_bak; insert into pgbench_branches select * from pgbench_branches_bak; insert into pgbench_history select * from pgbench_history_bak; insert into pgbench_tellers select * from pgbench_tellers_bak;&quot;</span><br></pre></td></tr></table></figure>
+
+<p>Where, the only input parameter <code>SCALE</code> is the scale for pgbench to initialize data. The internal variable <code>PART</code> is used to manage how many tuples per partition. As pgbench generates <code>100,000</code> records for one scale, so we use scale divided by 10 to load <code>1,000,000</code> records to each partition. It can always be changed to different values according to the benchmark requirement. Here, we simply set it to 10 and load <code>1 million records to each partition</code>. Therefore, the <code>number of partitions</code> is equal to <code>scale/10 + 1</code> (a default partition is added).</p>
+<p>To compare the queries performance, we run the performance in below 3 scenarios,</p>
+<p>1) query data without any index, randomly query a record from many partitions using a non-partition column without index<br>pgbench -n -c8 -j8  -T60 postgres -b select-only</p>
+<p>2) query data with regular unique index, randomly query a record from many partitions using a non-partition column with unique index (Postgres existing feature, to build such an unique index, the partition-key has to be involved).</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">psql -d postgres -c &quot;create unique index local_idx_pgbench_accounts_aid on pgbench_accounts (bid, aid);&quot;</span><br><span class="line">pgbench -n -c8 -j8  -T60 postgres -b select-only</span><br></pre></td></tr></table></figure>
+
+<p>3) query data with global unique index, randomly query a record from many partitions using a non-partition column with global unique index which was built on this non-partition column.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">psql -d postgres -c &quot;create unique index global_idx_pgbench_accounts_aid on pgbench_accounts using btree(aid) global;&quot;</span><br><span class="line">pgbench -n -c8 -j8  -T60 postgres -b select-only</span><br></pre></td></tr></table></figure>
+
+<p>With the setup above, you can experience <code>select-only</code>, <code>simple-update</code> and <code>tpcb-like</code> using pgbench built-in script with different numbers of partitions. For example, to compare the performance among <code>no index</code>, <code>regular index</code>, and <code>global index</code> with 100 partitions for <code>select-only</code> and <code>tpcb-like</code>, we can run below commands,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"># no index</span><br><span class="line">.&#x2F;init-gi.sh 100 </span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b select-only | grep tps</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b tpcb-like | grep tps</span><br><span class="line"></span><br><span class="line"># regular unique index</span><br><span class="line">.&#x2F;init-gi.sh 100 </span><br><span class="line">psql -d postgres -c &quot;create unique index local_idx_pgbench_accounts_aid on pgbench_accounts (bid, aid);&quot;</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b select-only | grep tps</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b tpcb-like | grep tps</span><br><span class="line"></span><br><span class="line"># global unique index</span><br><span class="line">.&#x2F;init-gi.sh 100 </span><br><span class="line">psql -d postgres -c &quot;create unique index global_idx_pgbench_accounts_aid on pgbench_accounts using btree(aid) global;&quot;</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b select-only | grep tps</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b tpcb-like | grep tps</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-Performance-benchmark"><a href="#4-Performance-benchmark" class="headerlink" title="4. Performance benchmark"></a>4. Performance benchmark</h4><p>Here is the performance benchmark charts after repeated the tests above for 1, 10, 100, and 1000 partitions.</p>
+<p>As you can see, with this approach: keep storage separately but enforcement uniqueness check across all of a partitioned table’s indexes, the performance is related with the number of partitions. There are probably some parts we potentially can look into, such as 1) using cache to optimize the disk I/O usage; 2) find out a way to avoid unnecessary partitions check, etc.</p>
+<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I explained how the performance benchmark was performed on the initial Global Unique Index POC for random select and update, and I hope it can help analyze the good or bad of this POC.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/14/global-index-a-different-approach/" rel="prev" title="Global Index, a different approach">
+      <i class="fa fa-chevron-left"></i> Global Index, a different approach
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-Overview"><span class="nav-number">1.</span> <span class="nav-text">1. Overview</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Build-global-index"><span class="nav-number">2.</span> <span class="nav-text">2. Build global index</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#clone-the-repository-from-github"><span class="nav-number"></span> <span class="nav-text">clone the repository from github,</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#checkout-a-particular-commit-to-apply-global-index-patches"><span class="nav-number"></span> <span class="nav-text">checkout a particular commit to apply global index patches</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#apply-global-index-patches-from-POC"><span class="nav-number"></span> <span class="nav-text">apply global index patches from POC</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#configure-compile-and-install"><span class="nav-number"></span> <span class="nav-text">configure, compile and install</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Test-with-pgbench"><span class="nav-number">1.</span> <span class="nav-text">3. Test with pgbench</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-Performance-benchmark"><span class="nav-number">2.</span> <span class="nav-text">4. Performance benchmark</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-Summary"><span class="nav-number">3.</span> <span class="nav-text">5. Summary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="David Zhang"
+      src="/images/avatar.png">
+  <p class="site-author-name" itemprop="name">David Zhang</p>
+  <div class="site-description" itemprop="description">knowledge is power</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">83</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">David Zhang</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">Theme – <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> v7.7.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/medium-zoom@1/dist/medium-zoom.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

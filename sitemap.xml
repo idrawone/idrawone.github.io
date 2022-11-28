@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://idrawone.github.io/2022/11/24/global-index-benchmark-with-pgbench/</loc>
+    
+    <lastmod>2022-11-25T20:19:45.000Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://idrawone.github.io/2022/10/14/global-index-a-different-approach/</loc>
     
     <lastmod>2022-10-14T21:12:30.779Z</lastmod>

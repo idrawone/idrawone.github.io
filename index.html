@@ -145,7 +145,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">27</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>Archives<span class="badge">28</span></a>
 
   </li>
   </ul>
@@ -170,6 +170,151 @@
             
 
   <div class="posts-expand">
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2022/11/24/global-index-benchmark-with-pgbench/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="David Zhang">
+      <meta itemprop="description" content="knowledge is power">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="David's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/11/24/global-index-benchmark-with-pgbench/" class="post-title-link" itemprop="url">Global Index, benchmark with pgbench</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2022-11-24 00:00:00" itemprop="dateCreated datePublished" datetime="2022-11-24T00:00:00-08:00">2022-11-24</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2022-11-25 12:19:45" itemprop="dateModified" datetime="2022-11-25T12:19:45-08:00">2022-11-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
+                    <span itemprop="name">PostgreSQL</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/" itemprop="url" rel="index">
+                    <span itemprop="name">global</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/" itemprop="url" rel="index">
+                    <span itemprop="name">index</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/" itemprop="url" rel="index">
+                    <span itemprop="name">partition</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/" itemprop="url" rel="index">
+                    <span itemprop="name">unique</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/" itemprop="url" rel="index">
+                    <span itemprop="name">performance</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/pgbench/" itemprop="url" rel="index">
+                    <span itemprop="name">pgbench</span>
+                  </a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/PostgreSQL/global/index/partition/unique/performance/pgbench/benchmark/" itemprop="url" rel="index">
+                    <span itemprop="name">benchmark</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/img/fi-postgres-on-lustre.png" alt="Featured image"></p>
+<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>Followed my previous blog, <a href="https://www.highgo.ca/2022/10/14/global-index-a-different-approach/" target="_blank" rel="noopener">Global Index, a different approach</a>, we posted our initial Global Unique Index POC to Postgres community for open discussion about this approach. Now, this blog is trying to explain how the benchmark was performed using pgbench on this initial <a href="https://www.postgresql.org/message-id/184879c5306.12490ea581628934.7312528450011769010@highgo.ca" target="_blank" rel="noopener">Global Unique Index POC</a>.</p>
+<h4 id="2-Build-global-index"><a href="#2-Build-global-index" class="headerlink" title="2. Build global index"></a>2. Build global index</h4><p>Before running the performance benchmark tests, here is steps about how to build Global Unique Index from the initial POC.</p>
+<h1 id="clone-the-repository-from-github"><a href="#clone-the-repository-from-github" class="headerlink" title="clone the repository from github,"></a>clone the repository from github,</h1><p>git clone <a href="https://github.com/postgres/postgres.git" target="_blank" rel="noopener">https://github.com/postgres/postgres.git</a></p>
+<h1 id="checkout-a-particular-commit-to-apply-global-index-patches"><a href="#checkout-a-particular-commit-to-apply-global-index-patches" class="headerlink" title="checkout a particular commit to apply global index patches"></a>checkout a particular commit to apply global index patches</h1><p>git check 85d8b30724c0fd117a683cc72706f71b28463a05 -b global-index</p>
+<h1 id="apply-global-index-patches-from-POC"><a href="#apply-global-index-patches-from-POC" class="headerlink" title="apply global index patches from POC"></a>apply global index patches from POC</h1><p>git apply 0001-support-global-unique-index-with-non-partition-key.patch<br>git apply 0002-support-global-unique-index-create.patch<br>git apply 0003-support-global-unique-index-attach-and-detach.patch<br>git apply 0004-support-global-unique-index-insert-and-update.patch</p>
+<h1 id="configure-compile-and-install"><a href="#configure-compile-and-install" class="headerlink" title="configure, compile and install"></a>configure, compile and install</h1><p>./configure –prefix=/media/disk1/globalindex –enable-tap-tests –enable-debug “CFLAGS=-g3 -O0 -fno-omit-frame-pointer” “CC=gcc -std=gnu99”<br>./make clean &amp;&amp; make &amp;&amp; make install </p>
+<h4 id="3-Test-with-pgbench"><a href="#3-Test-with-pgbench" class="headerlink" title="3. Test with pgbench"></a>3. Test with pgbench</h4><p>Our Global Unique Index is designed to address the requirement <code>to access a partitioned table using non-partition column with an unique index</code>. In another words, users can build a cross-partition (globally) unique index without partition-key for select, insert, update and delete.</p>
+<p>The goal is to test the performance using pgbench, however, only <code>aid</code> in <code>pgbench_accounts</code> is designed to be unique, and it is also used as partition-key. To test unique with pgbench, we prepare the data with below 5 steps,</p>
+<p>1) initiate the data without partition;<br>2) recreate four pgbench tables after the original tables has renamed;<br>3) create partitions using <code>bid</code> as partition-key;<br>4) attach all partitions to pgbench_accounts table;<br>5) import the data from renamed tables correspondingly.<br>Here is a simple script to achieve the above 5 steps, <code>cat init-gi.sh</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;bin&#x2F;bash</span><br><span class="line"></span><br><span class="line">## default scale, 100</span><br><span class="line">SCALE&#x3D;$&#123;1:-100&#125;</span><br><span class="line"></span><br><span class="line">## 1,000,000 tuples per partition</span><br><span class="line">PART&#x3D;$(( $&#123;SCALE&#125;&#x2F;10 ))</span><br><span class="line"></span><br><span class="line">## pgbench init</span><br><span class="line">pgbench -i -s $SCALE postgres</span><br><span class="line"></span><br><span class="line">## backup tables and data</span><br><span class="line">psql -d postgres -c &quot;alter table pgbench_accounts rename to pgbench_accounts_bak; alter table pgbench_branches rename to pgbench_branches_bak; alter table pgbench_history rename to pgbench_history_bak; alter table pgbench_tellers rename to pgbench_tellers_bak;&quot;</span><br><span class="line"></span><br><span class="line">## create partitions using bid as partition key so that aid can be used for global unique index test</span><br><span class="line">psql -d postgres -c &quot;CREATE TABLE public.pgbench_accounts (aid integer NOT NULL, bid integer, abalance integer, filler character(84)) PARTITION BY RANGE (bid);&quot;</span><br><span class="line">for ((i&#x3D;0; i&lt;$PART; i++))</span><br><span class="line">do</span><br><span class="line">   psql -d postgres -c &quot;CREATE TABLE public.pgbench_accounts_$i (aid integer NOT NULL, bid integer, abalance integer, filler character(84));&quot;</span><br><span class="line">   psql -d postgres -c &quot;ALTER TABLE ONLY public.pgbench_accounts ATTACH PARTITION public.pgbench_accounts_$i FOR VALUES FROM ($(( $i*10+1 ))) TO ($(( ($i+1)*10+1 )));&quot;</span><br><span class="line">done</span><br><span class="line"></span><br><span class="line">## add default partition</span><br><span class="line">psql -d postgres -c &quot;CREATE TABLE public.pgbench_accounts_default(aid integer NOT NULL, bid integer, abalance integer, filler character(84));&quot;</span><br><span class="line">psql -d postgres -c &quot;ALTER TABLE ONLY public.pgbench_accounts ATTACH PARTITION public.pgbench_accounts_default FOR VALUES FROM ($(( $i*10+1 ))) TO (MAXVALUE);&quot;</span><br><span class="line"></span><br><span class="line">## recreate other tables</span><br><span class="line">psql -d postgres -c &quot;CREATE TABLE public.pgbench_branches (bid integer NOT NULL, bbalance integer, filler character(88)); CREATE TABLE public.pgbench_history (tid integer, bid integer, aid integer, delta integer, mtime timestamp without time zone, filler character(22)); CREATE TABLE public.pgbench_tellers (tid integer NOT NULL, bid integer, tbalance integer, filler character(84));&quot;</span><br><span class="line"></span><br><span class="line">## import data from backup</span><br><span class="line">psql -d postgres -c &quot;insert into pgbench_accounts select * from pgbench_accounts_bak; insert into pgbench_branches select * from pgbench_branches_bak; insert into pgbench_history select * from pgbench_history_bak; insert into pgbench_tellers select * from pgbench_tellers_bak;&quot;</span><br></pre></td></tr></table></figure>
+
+<p>Where, the only input parameter <code>SCALE</code> is the scale for pgbench to initialize data. The internal variable <code>PART</code> is used to manage how many tuples per partition. As pgbench generates <code>100,000</code> records for one scale, so we use scale divided by 10 to load <code>1,000,000</code> records to each partition. It can always be changed to different values according to the benchmark requirement. Here, we simply set it to 10 and load <code>1 million records to each partition</code>. Therefore, the <code>number of partitions</code> is equal to <code>scale/10 + 1</code> (a default partition is added).</p>
+<p>To compare the queries performance, we run the performance in below 3 scenarios,</p>
+<p>1) query data without any index, randomly query a record from many partitions using a non-partition column without index<br>pgbench -n -c8 -j8  -T60 postgres -b select-only</p>
+<p>2) query data with regular unique index, randomly query a record from many partitions using a non-partition column with unique index (Postgres existing feature, to build such an unique index, the partition-key has to be involved).</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">psql -d postgres -c &quot;create unique index local_idx_pgbench_accounts_aid on pgbench_accounts (bid, aid);&quot;</span><br><span class="line">pgbench -n -c8 -j8  -T60 postgres -b select-only</span><br></pre></td></tr></table></figure>
+
+<p>3) query data with global unique index, randomly query a record from many partitions using a non-partition column with global unique index which was built on this non-partition column.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">psql -d postgres -c &quot;create unique index global_idx_pgbench_accounts_aid on pgbench_accounts using btree(aid) global;&quot;</span><br><span class="line">pgbench -n -c8 -j8  -T60 postgres -b select-only</span><br></pre></td></tr></table></figure>
+
+<p>With the setup above, you can experience <code>select-only</code>, <code>simple-update</code> and <code>tpcb-like</code> using pgbench built-in script with different numbers of partitions. For example, to compare the performance among <code>no index</code>, <code>regular index</code>, and <code>global index</code> with 100 partitions for <code>select-only</code> and <code>tpcb-like</code>, we can run below commands,</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"># no index</span><br><span class="line">.&#x2F;init-gi.sh 100 </span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b select-only | grep tps</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b tpcb-like | grep tps</span><br><span class="line"></span><br><span class="line"># regular unique index</span><br><span class="line">.&#x2F;init-gi.sh 100 </span><br><span class="line">psql -d postgres -c &quot;create unique index local_idx_pgbench_accounts_aid on pgbench_accounts (bid, aid);&quot;</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b select-only | grep tps</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b tpcb-like | grep tps</span><br><span class="line"></span><br><span class="line"># global unique index</span><br><span class="line">.&#x2F;init-gi.sh 100 </span><br><span class="line">psql -d postgres -c &quot;create unique index global_idx_pgbench_accounts_aid on pgbench_accounts using btree(aid) global;&quot;</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b select-only | grep tps</span><br><span class="line">pgbench -n -c8 -j8 -T5 postgres -b tpcb-like | grep tps</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-Performance-benchmark"><a href="#4-Performance-benchmark" class="headerlink" title="4. Performance benchmark"></a>4. Performance benchmark</h4><p>Here is the performance benchmark charts after repeated the tests above for 1, 10, 100, and 1000 partitions.</p>
+<p>As you can see, with this approach: keep storage separately but enforcement uniqueness check across all of a partitioned table’s indexes, the performance is related with the number of partitions. There are probably some parts we potentially can look into, such as 1) using cache to optimize the disk I/O usage; 2) find out a way to avoid unnecessary partitions check, etc.</p>
+<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I explained how the performance benchmark was performed on the initial Global Unique Index POC for random select and update, and I hope it can help analyze the good or bad of this POC.</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
         
   
   
@@ -1285,118 +1430,6 @@ In this blog, I explained how to set up a parallel distributed file system - Lus
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="en">
-    <link itemprop="mainEntityOfPage" href="https://idrawone.github.io/2021/10/15/what-is-backup-label/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="David Zhang">
-      <meta itemprop="description" content="knowledge is power">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="David's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/10/15/what-is-backup-label/" class="post-title-link" itemprop="url">Backup Label in PostgreSQL</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-              
-
-              <time title="Created: 2021-10-15 01:00:00 / Modified: 15:35:50" itemprop="dateCreated datePublished" datetime="2021-10-15T01:00:00-07:00">2021-10-15</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/" itemprop="url" rel="index">
-                    <span itemprop="name">PostgreSQL</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/basebackup/" itemprop="url" rel="index">
-                    <span itemprop="name">basebackup</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/basebackup/label/" itemprop="url" rel="index">
-                    <span itemprop="name">label</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/basebackup/label/start/" itemprop="url" rel="index">
-                    <span itemprop="name">start</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/basebackup/label/start/stop/" itemprop="url" rel="index">
-                    <span itemprop="name">stop</span>
-                  </a>
-                </span>
-                  , 
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/PostgreSQL/basebackup/label/start/stop/tools/" itemprop="url" rel="index">
-                    <span itemprop="name">tools</span>
-                  </a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/img/fi-backup-label.png" alt="Featured image"></p>
-<h4 id="1-Overview"><a href="#1-Overview" class="headerlink" title="1. Overview"></a>1. Overview</h4><p>When I was working on some backup and recovery related features for a project based on Postgres, I noticed that there is file called <code>backup_label</code>. By quickly google search, you can find some very nice blogs or books which discussed this topic, such as, <a href="https://www.interdb.jp/pg/pgsql10.html" target="_blank" rel="noopener">The Internals of PostgreSQL</a>, one of my favourite books. In this blog, I am going to talk it a little more based on my experience.</p>
-<h4 id="2-What-is-backup-label"><a href="#2-What-is-backup-label" class="headerlink" title="2. What is backup_label?"></a>2. What is backup_label?</h4><p>The <code>backup_label</code> is a file created in $PGDATA folder when there is an <code>exclusive backup</code> triggered by <code>pg_start_backup()</code> and the backup is in progress. This <code>backup_label</code> file will be removed once the <code>pg_stop_backup()</code> is executed. Here, the <code>exclusive backup</code> is one of the backup methods introduced to Postgres early, and as the name indicated, it does not support multiple backup activities at the same time. Because of this limitation, a frontend backup tool <code>pg_basebackup</code> is added to the Postgres later. This <code>pg_basebackup</code> client does allow multiple backup activities performed at the same time. Therefore, this kind of backup is called as <code>non-exclusive backup</code>. Both backup methods use the <code>backup_label</code> but in a different way.</p>
-<p>In exclusive basebackup, the <code>backup_label</code> will be generated automatically on the source server side. To see how this file looks like, you can run a command like, <code>select pg_start_backup(&#39;first backup&#39;);</code> from a psql console. Then you should be able to find a <code>backup_label</code> file in $PGDATA folder with the content like below,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">START WAL LOCATION: 0&#x2F;6000028 (file 000000010000000000000006)</span><br><span class="line">CHECKPOINT LOCATION: 0&#x2F;6000060</span><br><span class="line">BACKUP METHOD: pg_start_backup</span><br><span class="line">BACKUP FROM: master</span><br><span class="line">START TIME: 2021-10-15 13:30:03 PDT</span><br><span class="line">LABEL: first backup</span><br><span class="line">START TIMELINE: 1</span><br></pre></td></tr></table></figure>
-
-
-<h4 id="3-How-does-it-work"><a href="#3-How-does-it-work" class="headerlink" title="3. How does it work?"></a>3. How does it work?</h4><p>In exclusive backup mode, the Postgres source server will generate this file when <code>pg_sart_backup()</code> is executed, and removed after <code>pg_stop_backup()</code>, however, in non-executive backup mode, such as using <code>pg_basebackup</code> client to perform a base backup, the <code>backup_label</code> is only streamed to the client side but not physical saved to the source Postgres server. </p>
-<p>As you can see in above <code>baseup_label</code> file, it contains a similar checkpoint information compared to pg_controldata file. If a backup is used in recovery with this backup_label file present, then Postgres will use the checkpoint in backup_label to start the REDO process. The reason is that there could be multiple checkpoints happening during the backup process. After the recovery process is done, this <code>backup_label</code> file will be renamed as <code>backup_label.old</code> to indelicate the recovery finished properly. In simple words, with the <code>backup_label</code> file, the database has a consistent checkpoint to recover from a proper archive.</p>
-<h4 id="4-Does-it-impact-any-frontend-tool"><a href="#4-Does-it-impact-any-frontend-tool" class="headerlink" title="4. Does it impact any frontend tool?"></a>4. Does it impact any frontend tool?</h4><p>The answer is <code>yes</code>. Some frontend tools will perform differently if a <code>backup_label</code> file is present. For example, if <code>pg_ctl</code> sees a <code>backup_label</code> file during smart shutdown process, it will wait for it to be removed by providing a waring message to the end user with something like,</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">WARNING: online backup mode is active</span><br><span class="line">Shutdown will not complete until pg_stop_backup() is called</span><br></pre></td></tr></table></figure>
-<p>Another example is the frontend tool <code>pg_rewind</code> which creates a <code>backup_label</code> to force a recovery to start from the last common checkpoint. </p>
-<h4 id="5-Summary"><a href="#5-Summary" class="headerlink" title="5. Summary"></a>5. Summary</h4><p>In this blog, I explained the <code>backup_label</code> file in Postgres. I believe the end users won’t pay attention to it most of the time, but if you do encounter some issues related with <code>backup_label</code> then I hope this blog can give you some clues.</p>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1469,12 +1502,12 @@ In this blog, I explained how to set up a parallel distributed file system - Lus
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">27</span>
+          <span class="site-state-item-count">28</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
-        <span class="site-state-item-count">81</span>
+        <span class="site-state-item-count">83</span>
         <span class="site-state-item-name">categories</span>
       </div>
   </nav>
